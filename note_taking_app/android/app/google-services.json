@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "405596786011",
+    "project_id": "note-taking-app-9134f",
+    "storage_bucket": "note-taking-app-9134f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:405596786011:android:70c8bb52ad69a614845e7e",
+        "android_client_info": {
+          "package_name": "com.example.note_taking_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRF1rAzon_yvXvh5ZDQ5UkYzOPWtHTJmk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
