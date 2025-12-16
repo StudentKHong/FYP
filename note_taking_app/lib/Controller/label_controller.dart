@@ -111,8 +111,11 @@ class LabelController extends Controller<Label> {
           ? noteLabels
           : taskLabels;
       final labelNames = existingLabels.map((label) => label.name).toList();
-
+      print("Existing Label Names: $labelNames");
       final labelName = await labelRepository.generateLabel(text, labelNames);
+      print("Text: $text");
+      print("Label Names: $labelName");
+      print(labelName);
 
       // Check if label already exists.
       final exist = list.any((label) => label.name == labelName);
@@ -131,7 +134,8 @@ class LabelController extends Controller<Label> {
         suggestedLabels.assignAll([newLabel]);
       }
     } catch (ex) {
-      errorMessage.value = "Failed to generate label.";
+      errorMessage.value = ex.toString();
+      debugPrint(ex.toString());
     }
   }
 

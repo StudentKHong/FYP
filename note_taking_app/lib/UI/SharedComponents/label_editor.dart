@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/label_controller.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
@@ -62,168 +63,175 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
         decoration: InputDecoration(
           labelText: "Label",
           border: const OutlineInputBorder(),
-          suffixIcon: widget.isReadOnly ? Icon(Icons.lock) : null
+          suffixIcon: widget.isReadOnly ? Icon(Icons.lock) : null,
         ),
       );
     }
 
-    // Gather label lists.
-    final labelController = widget.labelController;
-    final existingLabels = widget.type == ComponentType.note
-        ? labelController.noteLabels
-        : labelController.taskLabels;
-
-    final newSuggestions = labelController.suggestedLabels;
-
     // Display label editor if is not read only.
     return SizedBox(
       width: double.infinity,
-      child: TypeAheadField<Label>(
-        controller: textController,
-        builder: (context, controller, focusNode) {
-          if (selectedLabel != null && controller.text.isEmpty) {
-            controller.text = selectedLabel!.name;
-          }
+      child: Obx(() {
+        // Gather label lists.
+        final labelController = widget.labelController;
+        final existingLabels = widget.type == ComponentType.note
+            ? labelController.noteLabels
+            : labelController.taskLabels;
 
-          return TextField(
-            controller: controller,
-            focusNode: focusNode,
-            decoration: InputDecoration(
-              labelText: "Label",
-              border: const OutlineInputBorder(),
-            ),
-          );
-        },
-        emptyBuilder: (context) {
-          final labelName = textController.text.trim();
+        final newSuggestions = labelController.suggestedLabels;
+        print(
+          "Suggested labels: ${labelController.suggestedLabels.map((label) => label.name)}",
+        );
 
-          final existingLabels =
-              (widget.type == ComponentType.note
-                      ? labelController.noteLabels
-                      : labelController.taskLabels)
-                  .toList();
-          final newSuggestions = labelController.suggestedLabels.toList();
+        return TypeAheadField<Label>(
+          controller: textController,
+          builder: (context, controller, focusNode) {
+            if (selectedLabel != null && controller.text.isEmpty) {
+              controller.text = selectedLabel!.name;
+            }
 
-          final allLabels = [...existingLabels, ...newSuggestions];
-          final isExisting = allLabels.any(
-            (label) =>
-                label.name.toLowerCase().contains(labelName.toLowerCase()),
-          );
-          // print(labelName.isEmpty);
-          if (labelName.isEmpty || isExisting) {
-            return const SizedBox.shrink();
-          }
-
-          final tempLabel = Label(
-            id: UniqueKey().toString(),
-            name: labelName,
-            type: widget.type,
-            count: 0,
-          );
-          return ListTile(
-            leading: const Icon(Icons.new_label_outlined),
-            title: Text("Create ${tempLabel.name}"),
-            tileColor: Colors.yellow,
-            contentPadding: EdgeInsets.zero,
-            onTap: () async {
-              final newLabel = await labelController.create(tempLabel);
-              if (labelController.errorMessage.value.isNotEmpty) {
-                CustomDialog.showError(
-                  "Error",
-                  labelController.errorMessage.value,
-                );
-                return;
-              }
-              setState(() {
-                selectedLabel = newLabel;
-                textController.text = newLabel!.name;
-              });
-
-              widget.onTagsChanged?.call(newLabel!);
-            },
-          );
-        },
-        itemBuilder: (context, value) {
-          final newSuggestions = labelController.suggestedLabels;
-
-          bool isNewSuggestion =
-              newSuggestions.toList().any(
-                (label) => label.name == value.name,
-              ) &&
-              !existingLabels.toList().any((label) => label.name == value.name);
-
-          Color labelColor = isNewSuggestion ? Colors.blue : Colors.green;
-          Icon icon = isNewSuggestion
-              ? const Icon(Icons.new_label_outlined)
-              : const Icon(Icons.label);
-
-          return ListTile(
-            tileColor: labelColor,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 5,
-            ),
-            leading: icon,
-            title: Text(
-              isNewSuggestion ? "AI Suggestion: ${value.name}" : value.name,
-            ),
-          );
-        },
-        onSelected: (suggestion) async {
-          isProgrammaticallyChanged = true;
-          textController.text = suggestion.name;
-          isProgrammaticallyChanged = false;
-
-          setState(() {
-            selectedLabel = existingLabels.toList().firstWhere(
-              (label) => label.name == suggestion.name,
-              orElse: () => suggestion,
+            return TextField(
+              controller: controller,
+              focusNode: focusNode,
+              decoration: InputDecoration(
+                labelText: "Label",
+                border: const OutlineInputBorder(),
+              ),
             );
-          });
+          },
+          emptyBuilder: (context) {
+            final labelName = textController.text.trim();
 
-          if (!existingLabels.toList().any(
-            (label) => label.name == suggestion.name,
-          )) {
-            selectedLabel = await labelController.create(suggestion);
-          } else {
-            selectedLabel = suggestion;
-          }
-          widget.onTagsChanged?.call(selectedLabel!);
+            final existingLabels =
+                (widget.type == ComponentType.note
+                        ? labelController.noteLabels
+                        : labelController.taskLabels)
+                    .toList();
+            final newSuggestions = labelController.suggestedLabels.toList();
 
-          if (mounted) {
-            Future.delayed(Duration(milliseconds: 10), () {
-              if (mounted) FocusScope.of(context).unfocus();
+            final allLabels = [...existingLabels, ...newSuggestions];
+            final isExisting = allLabels.any(
+              (label) =>
+                  label.name.toLowerCase().contains(labelName.toLowerCase()),
+            );
+            // print(labelName.isEmpty);
+            if (labelName.isEmpty || isExisting) {
+              return const SizedBox.shrink();
+            }
+
+            final tempLabel = Label(
+              id: UniqueKey().toString(),
+              name: labelName,
+              type: widget.type,
+              count: 0,
+            );
+            return ListTile(
+              leading: const Icon(Icons.new_label_outlined),
+              title: Text("Create ${tempLabel.name}"),
+              tileColor: Colors.yellow,
+              contentPadding: EdgeInsets.zero,
+              onTap: () async {
+                final newLabel = await labelController.create(tempLabel);
+                if (labelController.errorMessage.value.isNotEmpty) {
+                  CustomDialog.showError(
+                    "Error",
+                    labelController.errorMessage.value,
+                  );
+                  return;
+                }
+                setState(() {
+                  selectedLabel = newLabel;
+                  textController.text = newLabel!.name;
+                });
+
+                widget.onTagsChanged?.call(newLabel!);
+              },
+            );
+          },
+          itemBuilder: (context, value) {
+            final newSuggestions = labelController.suggestedLabels;
+
+            bool isNewSuggestion =
+                newSuggestions.toList().any(
+                  (label) => label.name == value.name,
+                ) &&
+                !existingLabels.toList().any(
+                  (label) => label.name == value.name,
+                );
+
+            Color labelColor = isNewSuggestion ? Colors.blue : Colors.green;
+            Icon icon = isNewSuggestion
+                ? const Icon(Icons.new_label_outlined)
+                : const Icon(Icons.label);
+
+            return ListTile(
+              tileColor: labelColor,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 5,
+              ),
+              leading: icon,
+              title: Text(
+                isNewSuggestion ? "AI Suggestion: ${value.name}" : value.name,
+              ),
+            );
+          },
+          onSelected: (suggestion) async {
+            isProgrammaticallyChanged = true;
+            textController.text = suggestion.name;
+            isProgrammaticallyChanged = false;
+
+            setState(() {
+              selectedLabel = existingLabels.toList().firstWhere(
+                (label) => label.name == suggestion.name,
+                orElse: () => suggestion,
+              );
             });
-          }
-        },
-        suggestionsCallback: (suggestion) {
-          if (suggestion.isEmpty) {
-            return [];
-          }
-          final lowerSuggestion = suggestion.toLowerCase();
 
-          final existingMatches = existingLabels
-              .toList()
-              .where(
-                (label) => label.name.toLowerCase().contains(lowerSuggestion),
-              )
-              .toList();
+            if (!existingLabels.toList().any(
+              (label) => label.name == suggestion.name,
+            )) {
+              selectedLabel = await labelController.create(suggestion);
+            } else {
+              selectedLabel = suggestion;
+            }
+            widget.onTagsChanged?.call(selectedLabel!);
 
-          final aiMatches = newSuggestions
-              .where(
-                (label) =>
-                    label.name.toLowerCase().contains(lowerSuggestion) &&
-                    !existingMatches.any(
-                      (existing) =>
-                          existing.name.toLowerCase() ==
-                          label.name.toLowerCase(),
-                    ),
-              )
-              .toList();
+            if (mounted) {
+              Future.delayed(Duration(milliseconds: 10), () {
+                if (mounted) FocusScope.of(context).unfocus();
+              });
+            }
+          },
+          suggestionsCallback: (suggestion) {
+            if (suggestion.isEmpty) {
+              return [];
+            }
+            final lowerSuggestion = suggestion.toLowerCase();
 
-          return [...existingMatches, ...aiMatches];
-        },
-      ),
+            final existingMatches = existingLabels
+                .toList()
+                .where(
+                  (label) => label.name.toLowerCase().contains(lowerSuggestion),
+                )
+                .toList();
+
+            final aiMatches = newSuggestions
+                .where(
+                  (label) =>
+                      label.name.toLowerCase().contains(lowerSuggestion) &&
+                      !existingMatches.any(
+                        (existing) =>
+                            existing.name.toLowerCase() ==
+                            label.name.toLowerCase(),
+                      ),
+                )
+                .toList();
+
+            return [...existingMatches, ...aiMatches];
+          },
+        );
+      }),
     );
 
     // return Opacity(

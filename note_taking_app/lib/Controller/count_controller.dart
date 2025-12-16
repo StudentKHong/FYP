@@ -6,7 +6,7 @@ import 'package:note_taking_app/Controller/role_controller.dart';
 import 'package:note_taking_app/Controller/task_controller.dart';
 import 'package:note_taking_app/Controller/team_controller.dart';
 
-class CountController extends GetxController{
+class CountController extends GetxController {
   final RoleController _roleController;
   final NoteController _noteController;
   final TaskController _taskController;
@@ -25,11 +25,11 @@ class CountController extends GetxController{
 
   CountController({
     required RoleController roleController,
-    required NoteController noteController, 
+    required NoteController noteController,
     required TaskController taskController,
     required ClassController classController,
     required TeamController teamController,
-    required NotificationController notificationController
+    required NotificationController notificationController,
   }) : _roleController = roleController,
        _noteController = noteController,
        _taskController = taskController,
@@ -47,32 +47,39 @@ class CountController extends GetxController{
     taskCounts[labelId]!.value = size ?? 0;
   }
 
-  Future<void> getAllNotesCount() async {
+  void getAllNotesCount() {
     _noteController.getAllCount();
-    notesCount.value = _noteController.totalCount.value;
+    ever(_noteController.totalCount, (int newCount) {
+      notesCount.value = newCount;
+    });
   }
 
-  Future<void> getAllTasksCount() async {
+  void getAllTasksCount() {
     _taskController.getAllCount();
-    tasksCount.value = _taskController.totalCount.value;
+    ever(_taskController.totalCount, (int newCount) {
+      tasksCount.value = newCount;
+    });
   }
 
-  Future<void> getAllNotificationsCount() async {
+  void getAllNotificationsCount() {
     _notificationController.getAllCount();
-    notificationCount.value = _notificationController.totalCount.value;
+    ever(_notificationController.totalCount, (int newCount) {
+      notificationCount.value = newCount;
+    });
   }
 
-  Future<void> getAllGroupsCount() async {
+  void getAllGroupsCount() {
     bool allowed = _roleController.hasPermission(PermissionType.viewClass);
-    int? size;
-    if (allowed){
+    if (allowed) {
       _classController.getAllCount();
-      size = _classController.totalCount.value;
-    }
-    else{
+      ever(_classController.totalCount, (int newCount) {
+        groupCount.value = newCount;
+      });
+    } else {
       _teamController.getAllCount();
-      size = _teamController.totalCount.value;
+      ever(_teamController.totalCount, (int newCount) {
+        groupCount.value = newCount;
+      });
     }
-    groupCount.value = size;
   }
 }

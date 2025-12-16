@@ -77,7 +77,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
     // Set default values.
     original = widget.task?.copyWith();
+    print("Reminder (Original): ${original?.reminderDateTime}");
     task = original?.copyWith();
+    print("Reminder (Task): ${task?.reminderDateTime}");
 
     task ??= Task(
       id: UniqueKey().toString(),
@@ -119,6 +121,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     startDateTime = task?.startDateTime;
     endDateTime = task?.endDateTime;
     reminderDateTime = task?.reminderDateTime;
+    print("Reminder date time is null: ${reminderDateTime == null}");
     selectedReminder = _getInitialReminderOption(task?.reminderDateTime);
     status = task?.status ?? Status.unknown;
 
@@ -219,14 +222,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
     for (var entry in options.entries) {
       final optionText = entry.key;
-      final optionDuration = entry.value!;
+      final optionDuration = entry.value;
 
-      if (optionText.contains('start') && start != null) {
+      if (optionText.contains('start') && start != null && optionDuration != null) {
         final calculatedReminderTime = start.subtract(optionDuration);
         if (calculatedReminderTime.isAtSameMomentAs(reminder)) {
           return optionText;
         }
-      } else if (optionText.contains('end') && end != null) {
+      } else if (optionText.contains('end') && end != null && optionDuration != null) {
         final calculatedReminderTime = end.subtract(optionDuration);
         if (calculatedReminderTime.isAtSameMomentAs(reminder)) {
           return optionText;
@@ -255,8 +258,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   TZDateTime? convertToTZ(DateTime? dateTime) {
     if (dateTime == null) return null;
-    final location = getLocation(DateTime.now().timeZoneName);
-    return TZDateTime.from(DateTime.now(), location);
+    final Location location = local;
+    // final location = getLocation(DateTime.now().timeZoneName);
+    return TZDateTime.from(dateTime, location);
   }
 
   Future<void> _scheduleReminder(Task task) async {
@@ -265,6 +269,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       return;
     }
     final TZDateTime? scheduleDate = convertToTZ(reminderDateTime);
+    print(scheduleDate);
 
     if (scheduleDate == null || scheduleDate.isBefore(DateTime.now())) {
       return;
@@ -306,7 +311,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       notificationDetails,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       payload: task.id,
       matchDateTimeComponents: DateTimeComponents.time
     );
@@ -378,6 +383,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               labelName: isForShared ? selectedLabel?.name : null,
               isViewed: isForShared ? false : true,
               isUpdated: true,
+              replaceReminder: true
             );
 
             if (widget.mode == Mode.edit) {
@@ -656,6 +662,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                   duration,
                                 );
                               }
+                            } else {
+                              reminderDateTime = null;
                             }
                           });
                         },

@@ -27,12 +27,17 @@ import 'package:note_taking_app/UI/Navigation/named_routes.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_theme.dart';
 import 'package:note_taking_app/UI/create_note.dart';
 import 'package:note_taking_app/UI/create_task.dart';
+import 'package:timezone/data/latest.dart';
 import 'package:note_taking_app/UI/login.dart';
 import 'package:timezone/data/latest.dart';
 import 'package:toastification/toastification.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
+
+Future<void> _configureLocalTimeZone() async {
+  final String currentTimeZone = await FlutterN
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -127,6 +132,10 @@ void main() async {
   WidgetsBinding.instance.addPostFrameCallback((_) async {
     await Get.putAsync(() async => ConnectivityService());
     await themeController.loadLocalTheme();
-    await Get.putAsync(() => UploadImageService().onInit());
+    await Get.putAsync<UploadImageService>(() async {
+      final service = UploadImageService();
+      await service.onInit();
+      return service;
+    });
   });
 }

@@ -114,7 +114,7 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
   }
 
   Future<void> _fetchData() async {
-    authController.checkAuthentication();
+    // authController.checkAuthentication();
 
     if (widget.customFetchFunction != null) {
       widget.customFetchFunction!();
@@ -521,6 +521,18 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
                                   ? (_controller as LabelController).taskLabels
                                   : _controller.filteredList)
                               .cast<T>();
+                      for (var task in (listToShow as List<Task>)) {
+                        print(
+                          'ID: ${task.id}, Title: ${task.title}, Status: ${task.status?.name}',
+                        );
+                        print('Description: ${task.description}');
+                        print(
+                          'Start: ${task.startDateTime}, End: ${task.endDateTime}',
+                        );
+                        print('Reminder: ${task.reminderDateTime}');
+                        print('Label: ${task.label?.name ?? 'None'}');
+                        print('-----------------');
+                      }
 
                       return ListView.builder(
                         itemCount: listToShow.length,
@@ -590,7 +602,9 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
                               onTap: _selectionMode != SelectionMode.none
                                   ? () => _selectItem(item)
                                   : null,
-                              onLongPress: _selectionMode == SelectionMode.none || widget.pageType != ListScreenType.classes
+                              onLongPress:
+                                  _selectionMode == SelectionMode.none ||
+                                      widget.pageType != ListScreenType.classes
                                   ? () {
                                       setState(() {
                                         _selectionMode = SelectionMode.regular;

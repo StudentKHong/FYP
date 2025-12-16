@@ -63,7 +63,7 @@ class LabelRepository extends UserRepository<Label> {
   }
 
   Future<String> generateLabel(String text, List<String> labels) async {
-    final url = Uri.parse("https://127.0.0.1:8000/docs#/default/generateLabel");
+    final url = Uri.parse("http://192.168.68.102:8000/generate-label");
     final response = await http.post(
       url,
       headers: {"Content-Type": "application/json"},
@@ -74,7 +74,7 @@ class LabelRepository extends UserRepository<Label> {
       final responseData = jsonDecode(response.body);
       return responseData['label'];
     } else {
-      throw Exception('Failed to generate label: ${response.statusCode}');
+      throw Exception('Failed to generate label: ${response.statusCode}, ${response.body}');
     }
   }
 }

@@ -68,7 +68,7 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
   List<T> get mostRecent =>
       list.length <= 3 ? list.toList() : list.sublist(0, 3);
 
-  void getById(String componentId) {
+  Future<void> getById(String componentId) async{
     errorMessage.value = "";
     watchByIdSubscription?.cancel();
     watchByIdSubscription = repository.watchById(componentId).listen((data) {

@@ -69,7 +69,9 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
   // Store and track the changes in the contents.
   Note? original;
   Note? note;
-  Timer? debounceTimer;
+  Delta? previousDocumentDelta;
+  Timer? deleteImagesDebounceTimer;
+  Timer? generateLabelDebounceTimer;
   bool toggleEnabled = false;
   bool hasChanged = false;
   Label? selectedLabel;
@@ -83,6 +85,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
   late final NoteController noteController;
   late final String controllerTag;
   late AttachmentController attachmentController;
+  final UploadImageService uploadImageService = Get.find<UploadImageService>();
   final LabelController labelController = Get.find<LabelController>();
   final SettingController settingController = Get.find<SettingController>();
   final ConnectivityService connectivityService =
@@ -123,7 +126,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
 
     // Set text field and quill controllers.
     titleController.text = original?.title ?? '';
-    numberOfCharacters = ValueNotifier(maxLength);
+    previousDocumentDelta = Delta.fromJson(jsonDecode(original?.content ?? ""));
     quillFocusNode = FocusNode(canRequestFocus: widget.mode != Mode.view);
 
     // Load data.
@@ -155,6 +158,10 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
     // else {
     //   _listenToContentChanges();
     // }
+    numberOfCharacters = ValueNotifier(
+      contentController.document.toPlainText().length,
+    );
+
     _listenToContentChanges();
 
     // Load labels.
@@ -199,7 +206,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
     quillFocusNode.dispose();
     quillScrollController.dispose();
     ImageEmbedBuilder.cache.clear();
-    debounceTimer?.cancel();
+    generateLabelDebounceTimer?.cancel();
     super.dispose();
   }
 
@@ -252,15 +259,34 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
 
       updateHasChanged();
 
+      deleteImagesDebounceTimer?.cancel();
+      deleteImagesDebounceTimer = Timer(Duration(milliseconds: 1000), () async {
+        final currentDelta = contentController.document.toDelta();
+
+        if (note != null &&
+            previousDocumentDelta != null &&
+            previousDocumentDelta! != currentDelta) {
+          await uploadImageService.deleteImages(
+            note: note!,
+            oldContentJson: jsonEncode(previousDocumentDelta),
+            currentContentJson: jsonEncode(currentDelta),
+          );
+          previousDocumentDelta = currentDelta;
+        }
+      });
+
       // Update suggested labels if auto-generate is enabled.
       if (toggleEnabled) {
-        debounceTimer?.cancel();
-        debounceTimer = Timer(const Duration(milliseconds: 500), () async {
-          await labelController.generateLabel(
-            ComponentType.note,
-            contentController.document.toPlainText(),
-          );
-        });
+        generateLabelDebounceTimer?.cancel();
+        generateLabelDebounceTimer = Timer(
+          const Duration(milliseconds: 500),
+          () async {
+            await labelController.generateLabel(
+              ComponentType.note,
+              contentController.document.toPlainText(),
+            );
+          },
+        );
       }
     });
   }
@@ -394,6 +420,14 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
             Get.back(result: note);
             return;
           } else {
+            if (note != null) {
+              await uploadImageService.deleteImages(
+                note: note!,
+                currentContentJson: jsonEncode(
+                  contentController.document.toDelta().toJson(),
+                ),
+              );
+            }
             note = note!.copyWith(
               title: titleController.text.trim(),
               content: deltaJson,
@@ -425,8 +459,12 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
               );
               return;
             }
-            CustomDialog.showSuccess("Success", "Successfully edit note.");
-            Get.back(result: note);
+            await uploadImageService.attemptUpload();
+
+            if (!uploadImageService.hasError.value) {
+              CustomDialog.showSuccess("Success", "Successfully edit note.");
+              Get.back(result: note);
+            }
             return;
           }
         }
@@ -454,7 +492,9 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                   notes: [note!],
                   isForShared: widget.mode == Mode.editShared,
                   onUpdate: (updatedNotes) {
-                    final list = updatedNotes.map((item) => item as Note).toList();
+                    final list = updatedNotes
+                        .map((item) => item as Note)
+                        .toList();
                     if (list.length == 1) {
                       setState(() {
                         note = list.first;
@@ -607,6 +647,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                         showSubscript: false,
                         showSuperscript: false,
                         embedButtons: FlutterQuillEmbeds.toolbarButtons(
+                          videoButtonOptions: null,
                           imageButtonOptions: QuillToolbarImageButtonOptions(
                             tooltip: "Image",
                             imageButtonConfig: QuillToolbarImageConfig(
@@ -617,22 +658,32 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                   source: ImageSource.gallery,
                                 );
                                 if (pickedImage == null) return null;
-                                return pickedImage.path;
 
-                                // // Save to Firebase Cloud Storage.
                                 // final file = File(pickedImage.path);
-                                // final storageReference = FirebaseStorage.instance
-                                //     .ref()
-                                //     .child("note_images")
-                                //     .child(
-                                //       "${DateTime.now().millisecondsSinceEpoch}.jpg",
-                                //     );
-                                // await storageReference.putFile(file);
 
-                                // // Get download url.
-                                // final downloadUrl = await storageReference
-                                //     .getDownloadURL();
-                                // return downloadUrl;
+                                // if (connectivityService.isOnline.value) {
+                                //   try {
+                                //     // Save to Firebase Cloud Storage.
+                                //     final storageReference = FirebaseStorage
+                                //         .instance
+                                //         .ref()
+                                //         .child("note_images")
+                                //         .child(
+                                //           "${DateTime.now().millisecondsSinceEpoch}.jpg",
+                                //         );
+                                //     await storageReference.putFile(file);
+
+                                //     // Get download url.
+                                //     final downloadUrl = await storageReference
+                                //         .getDownloadURL();
+                                //     return downloadUrl;
+                                //   } catch (ex) {
+                                //     CustomDialog.showError("Error", "Failed to upload image.");
+                                //     return pickedImage.path;
+                                //   }
+                                // }
+
+                                return pickedImage.path;
                               },
                               onImageInsertCallback:
                                   (imageUrl, controller) async {
@@ -647,9 +698,13 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                     );
 
                                     final noteId = note?.id ?? controllerTag;
-                                    Get.find<UploadImageService>().queueUpload(
+                                    final contentJson = jsonEncode(
+                                      controller.document.toDelta().toJson(),
+                                    );
+                                    uploadImageService.queueUpload(
                                       localPath: imageUrl,
                                       noteId: noteId,
+                                      currentContentJson: contentJson,
                                     );
 
                                     hasChanged = true;
@@ -769,13 +824,18 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                           1,
                                     ),
                                   );
+                                  final noteId = note?.id ?? controllerTag;
+                                  final contentJson = jsonEncode(
+                                    contentController.document
+                                        .toDelta()
+                                        .toJson(),
+                                  );
+                                  uploadImageService.queueUpload(
+                                    localPath: result,
+                                    noteId: noteId,
+                                    currentContentJson: contentJson,
+                                  );
                                 }
-
-                                final noteId = note?.id ?? controllerTag;
-                                Get.find<UploadImageService>().queueUpload(
-                                  localPath: result!,
-                                  noteId: noteId,
-                                );
 
                                 hasChanged = true;
                               },
