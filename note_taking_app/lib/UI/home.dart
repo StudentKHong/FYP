@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:note_taking_app/Controller/note_controller.dart';
@@ -7,11 +8,12 @@ import 'package:note_taking_app/UI/Navigation/named_routes.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
 import 'package:note_taking_app/UI/SharedComponents/card.dart';
 import 'package:note_taking_app/UI/SharedComponents/extended_card.dart';
+import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/create_note.dart';
 import 'package:note_taking_app/UI/create_task.dart';
+import 'package:note_taking_app/main.dart';
 
 class HomeScreen extends StatefulWidget {
-
   const HomeScreen({super.key});
 
   @override
@@ -23,14 +25,26 @@ class _HomeScreenState extends State<HomeScreen> {
   final TaskController taskController = Get.find<TaskController>();
 
   @override
-  void initState(){
+  void initState() {
     super.initState();
+    _requestNotificationPermission();
     _loadData();
   }
 
   Future<void> _loadData() async {
     await noteController.getAll();
     await taskController.getAll();
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    final permissionGranted = await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.requestNotificationsPermission();
+    if (permissionGranted == null || !permissionGranted) {
+      CustomDialog.showError("Error", "Failed to receive permission for notification.");
+    }
   }
 
   @override
@@ -124,17 +138,20 @@ class _HomeScreenState extends State<HomeScreen> {
                             return CustomExtendedCard(
                               title: note.title,
                               content: [
-                                if (note.searchableContent != null) note.searchableContent!,
+                                if (note.searchableContent != null)
+                                  note.searchableContent!,
                                 DateFormat.yMd().format(note.createdAt),
                               ],
                               otherDetails: [note.label?.name ?? ''],
                               onTap: () {
-                                Get.to(NoteDetailScreen(mode: Mode.edit, note: note, ));
+                                Get.to(
+                                  NoteDetailScreen(mode: Mode.edit, note: note),
+                                );
                               },
                             );
                           },
                         ),
-              
+
                       Padding(
                         padding: const EdgeInsets.only(top: 20),
                         child: Text(
@@ -169,7 +186,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               ],
                               otherDetails: [task.label?.name ?? ''],
                               onTap: () {
-                                Get.to(TaskDetailScreen(mode: Mode.edit, task: task, ));
+                                Get.to(
+                                  TaskDetailScreen(mode: Mode.edit, task: task),
+                                );
                               },
                             );
                           },

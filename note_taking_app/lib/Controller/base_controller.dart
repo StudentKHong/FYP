@@ -43,24 +43,16 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
 
   // To ensure updated or created item is always on top of the list.
   @protected
-  void pushItemToTop({
-    required T entity,
-    int? listIndex,
-    int? filteredListIndex,
-  }) {
-    final indexL = listIndex ?? list.indexWhere((item) => item.id == entity.id);
-    if (indexL != -1) {
-      list.removeAt(indexL);
-    }
-    list.insert(0, entity);
+  void pushItemToTop({required T entity}) {
+    final othersInList = list.where((item) => item.id != entity.id);
+    final newList = [entity, ...othersInList];
+    list.value = newList;
 
-    final indexFL =
-        filteredListIndex ??
-        filteredList.indexWhere((item) => item.id == entity.id);
-    if (indexFL != -1) {
-      filteredList.removeAt(indexFL);
-    }
-    filteredList.insert(0, entity);
+    final othersInFilteredList = filteredList.where(
+      (item) => item.id != entity.id,
+    );
+    final newFilteredList = [entity, ...othersInFilteredList];
+    filteredList.value = newFilteredList;
   }
 
   ComponentFilter<T>? createFilter();
@@ -68,7 +60,7 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
   List<T> get mostRecent =>
       list.length <= 3 ? list.toList() : list.sublist(0, 3);
 
-  Future<void> getById(String componentId) async{
+  Future<void> getById(String componentId) async {
     errorMessage.value = "";
     watchByIdSubscription?.cancel();
     watchByIdSubscription = repository.watchById(componentId).listen((data) {
@@ -197,32 +189,18 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
     }
   }
 
-  Future<void> edit(List<T> entities) async {
+  Future<void> edit(List<T> entities, {bool pushToTop = true}) async {
     try {
       // Update component in Firebase Firestore.
       errorMessage.value = "";
+      print("Edit is triggered.");
       final newEntities = await repository.edit(entities);
 
       // Update reactive list and filteredList.
       for (final updatedEntity in newEntities) {
-        final listIndex = list.indexWhere(
-          (item) => item.id == updatedEntity.id,
-        );
-        if (listIndex != -1) {
-          list[listIndex] = updatedEntity;
+        if (pushToTop) {
+          pushItemToTop(entity: updatedEntity);
         }
-
-        final filteredListIndex = filteredList.indexWhere(
-          (item) => item.id == updatedEntity.id,
-        );
-        if (filteredListIndex != -1) {
-          filteredList[filteredListIndex] = updatedEntity;
-        }
-        pushItemToTop(
-          entity: updatedEntity,
-          listIndex: listIndex,
-          filteredListIndex: filteredListIndex,
-        );
       }
     } catch (e) {
       errorMessage.value = e.toString();

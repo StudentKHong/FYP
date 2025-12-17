@@ -90,6 +90,7 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
 
   final List<T> _selectedItems = [];
   late SelectionMode _selectionMode;
+  int filteredListUpdateCount = 0;
 
   @override
   void initState() {
@@ -105,6 +106,12 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
     // }
 
     _fetchData();
+    _controller.filteredList.listen((updatedList) {
+      filteredListUpdateCount++;
+      print("filteredList updated $filteredListUpdateCount times");
+      // Optional: print first 3 items to debug
+      print("First 3 items: ${updatedList.take(3).toList()}");
+    });
   }
 
   @override
@@ -231,11 +238,86 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
     return otherDetails;
   }
 
+  List<IconButton> _buildIconButtons(T item) {
+    void sortList() {
+      _controller.filteredList.sort((a, b) {
+        final aPinned = (a as dynamic).isPinned ?? false;
+        final bPinned = (b as dynamic).isPinned ?? false;
+
+        // Sort pin first.
+        if (aPinned && !bPinned) return -1;
+        if (!aPinned && bPinned) return 1;
+
+        // Then, sort date created.
+        final aTime = (a as dynamic).createdAt ?? DateTime.now();
+        final bTime = (b as dynamic).createdAt ?? DateTime.now();
+        return bTime.compareTo(aTime);
+      });
+    }
+
+    final List<IconButton> iconButtons = [];
+    if (item is Note || item is Task) {
+      iconButtons.addAll([
+        IconButton(
+          onPressed: () {
+            final isPinned = (item as dynamic).isPinned;
+            final newItem = (item as dynamic).copyWith(isPinned: !isPinned);
+
+            final index = _controller.filteredList.indexOf(item);
+            if (index != -1) {
+              _controller.filteredList.removeAt(index);
+              _controller.filteredList.insert(0, newItem);
+              sortList();
+            }
+            if (item is Note) {
+              (_controller as NoteController).togglePinStatus(item);
+            } else if (item is Task) {
+              (_controller as TaskController).edit([newItem]);
+            }
+          },
+          icon: Icon(
+            (item as dynamic).isPinned
+                ? Icons.push_pin
+                : Icons.push_pin_outlined,
+            color: Colors.black,
+          ),
+        ),
+        IconButton(
+          onPressed: () async {
+            final isArchived = (item as dynamic).isArchived;
+            final newItem = (item as dynamic).copyWith(isArchived: !isArchived);
+
+            final index = _controller.filteredList.indexOf(item);
+            if (index != -1) {
+              _controller.filteredList.removeAt(index);
+              _controller.filteredList.insert(0, newItem);
+              sortList();
+            }
+
+            if (item is Note) {
+              await (_controller as NoteController).edit([newItem]);
+            } else if (item is Task) {
+              await (_controller as TaskController).edit([newItem]);
+            }
+          },
+          icon: Icon(
+            (item as dynamic).isArchived
+                ? Icons.archive
+                : Icons.archive_outlined,
+            color: Colors.black,
+          ),
+        ),
+      ]);
+    }
+    return iconButtons;
+  }
+
   Widget _buildCard({
     required T item,
     required String dateCreated,
     required List<String> otherDetails,
     required Function()? onTap,
+    List<IconButton>? iconButtons,
   }) {
     if ((widget.pageType == ListScreenType.noteLabels ||
             widget.pageType == ListScreenType.taskLabels) &&
@@ -249,11 +331,13 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
       );
     }
     return CustomExtendedCard(
+      key: ValueKey(item.id),
       title: item.name,
       status: item is Task ? item.status : null,
       content: [item.description ?? '', dateCreated],
       otherDetails: otherDetails,
       onTap: onTap,
+      iconButtons: iconButtons,
     );
   }
 
@@ -521,36 +605,11 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
                                   ? (_controller as LabelController).taskLabels
                                   : _controller.filteredList)
                               .cast<T>();
-                      for (var task in (listToShow as List<Task>)) {
-                        print(
-                          'ID: ${task.id}, Title: ${task.title}, Status: ${task.status?.name}',
-                        );
-                        print('Description: ${task.description}');
-                        print(
-                          'Start: ${task.startDateTime}, End: ${task.endDateTime}',
-                        );
-                        print('Reminder: ${task.reminderDateTime}');
-                        print('Label: ${task.label?.name ?? 'None'}');
-                        print('-----------------');
-                      }
 
                       return ListView.builder(
                         itemCount: listToShow.length,
                         itemBuilder: (context, index) {
                           final item = listToShow[index];
-                          // T item;
-                          // // Obtain details to build widgets.
-                          // if (widget.pageType == ListScreenType.noteLabels) {
-                          //   item =
-                          //       (_controller as LabelController).noteLabels[index]
-                          //           as T;
-                          // } else if (widget.pageType == ListScreenType.taskLabels) {
-                          //   item =
-                          //       (_controller as LabelController).taskLabels[index]
-                          //           as T;
-                          // } else {
-                          //   item = _controller.filteredList[index];
-                          // }
 
                           final isFilterable = item is FilterableEntity;
                           String dateCreated = '';
@@ -592,6 +651,7 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
                             dateCreated: dateCreated,
                             otherDetails: otherDetails,
                             onTap: onTap,
+                            iconButtons: _buildIconButtons(item),
                           );
 
                           final isSelected = _selectedItems.contains(item);

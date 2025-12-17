@@ -193,7 +193,11 @@ class NoteController extends Controller<Note> {
       errorMessage.value = "";
       groupContents = groupContents.map((content) {
         final labelName = content.label?.name;
-        return content.copyWith(labelName: labelName, label: null, replaceLabel: true);
+        return content.copyWith(
+          labelName: labelName,
+          label: null,
+          replaceLabel: true,
+        );
       }).toList();
       final List<Note> createdGroupContents =
           await (repository as NoteRepository).shareMultiple(
@@ -218,22 +222,7 @@ class NoteController extends Controller<Note> {
       );
 
       // Update reactive list and filteredList.
-      final listIndex = list.indexWhere((item) => item.id == newEntity.id);
-      if (listIndex != -1) {
-        list[listIndex] = newEntity;
-      }
-
-      final filteredListIndex = filteredList.indexWhere(
-        (item) => item.id == newEntity.id,
-      );
-      if (filteredListIndex != -1) {
-        filteredList[filteredListIndex] = newEntity;
-      }
-      pushItemToTop(
-        entity: newEntity,
-        listIndex: listIndex,
-        filteredListIndex: filteredListIndex,
-      );
+      pushItemToTop(entity: newEntity);
     } catch (ex) {
       errorMessage.value = ex.toString();
     }
@@ -306,11 +295,10 @@ class NoteController extends Controller<Note> {
     }
   }
 
-  // Future<void> togglePinStatus(String noteId, bool isPinned) async {
-  //   await _noteRepository.edit(
-  //     Note.toUpdateMap(id: noteId, isPinned: isPinned),
-  //   );
-  // }
+  Future<void> togglePinStatus(Note note) async {
+    final updatedItem = note.copyWith(isPinned: !note.isPinned);
+    await edit([updatedItem], pushToTop: false);
+  }
 
   // Future<void> toggleArchiveStatus(String noteId, bool isArchived) async {
   //   await _noteRepository.edit(

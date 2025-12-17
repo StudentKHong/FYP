@@ -29,15 +29,10 @@ import 'package:note_taking_app/UI/create_note.dart';
 import 'package:note_taking_app/UI/create_task.dart';
 import 'package:timezone/data/latest.dart';
 import 'package:note_taking_app/UI/login.dart';
-import 'package:timezone/data/latest.dart';
 import 'package:toastification/toastification.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
-
-Future<void> _configureLocalTimeZone() async {
-  final String currentTimeZone = await FlutterN
-}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,13 +54,16 @@ void main() async {
   );
   await flutterLocalNotificationsPlugin.initialize(
     initializationSettings,
-    onDidReceiveNotificationResponse: (response) {
+    onDidReceiveNotificationResponse: (response) async {
       final String? taskId = response.payload;
       if (taskId != null) {
         final taskController = Get.find<TaskController>();
-        taskController.getById(taskId);
+        await taskController.getById(taskId);
         final task = taskController.content.value;
         if (task != null) {
+          
+          final notificationController = Get.find<NotificationController>();
+          notificationController.markReadStatus(response.id.toString(), true);
           Get.to(() => TaskDetailScreen(mode: Mode.view, task: task));
         }
       }

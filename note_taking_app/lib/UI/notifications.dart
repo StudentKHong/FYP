@@ -12,20 +12,31 @@ class NotificationsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final notificationController = Get.find<NotificationController>();
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      notificationController.getAll();
+    });
+
     return Scaffold(
       appBar: CustomAppBar(
-        titleText: "Notifications",
-        actions: [
-          CustomInfoButton(
-            infoDetails: [
-              Info(
-                text:
-                    "View all notifications. Notifications can be selected to view more details.",
-                maxLines: 3,
-              ),
-            ],
-          ),
-        ],
+        titleWidget: Row(
+          children: [
+            Text(
+              "Notifications",
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium!.copyWith(color: Colors.black),
+            ),
+            CustomInfoButton(
+              infoDetails: [
+                Info(
+                  text:
+                      "View all notifications. Notifications can be selected to view more details.",
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
       endDrawer: const HamburgerMenu(),
       body: Padding(
@@ -40,42 +51,36 @@ class NotificationsScreen extends StatelessWidget {
               ).textTheme.bodyLarge!.copyWith(color: Colors.black),
             ),
             Expanded(
-              child: ListView.builder(
-                itemCount: notificationController.list.length,
-                itemBuilder: (context, index) {
-                  final notifications = notificationController.list;
-                  final notification = notifications[index];
+              child: Obx(
+                () => ListView.builder(
+                  itemCount: notificationController.list.length,
+                  itemBuilder: (context, index) {
+                    final notifications = notificationController.list;
+                    final notification = notifications[index];
 
-                  return CustomExtendedCard(
-                    title: notification.title,
-                    content: [notification.description],
-                    iconButtons: [
-                      !notification.isRead
-                          ? IconButton(
-                              onPressed: () async {
-                                if (notification.id != null) {
-                                  await notificationController.markReadStatus(
-                                    notification.id!,
-                                    true,
-                                  );
-                                }
-                              },
-                              icon: Icon(Icons.mark_email_unread_outlined),
-                            )
-                          : IconButton(
-                              onPressed: () async {
-                                if (notification.id != null) {
-                                  await notificationController.markReadStatus(
-                                    notification.id!,
-                                    false,
-                                  );
-                                }
-                              },
-                              icon: Icon(Icons.mark_email_read),
-                            ),
-                    ],
-                  );
-                },
+                    return CustomExtendedCard(
+                      title: notification.title,
+                      content: [notification.description],
+                      iconButtons: [
+                        IconButton(
+                          onPressed: () async {
+                            if (notification.id != null) {
+                              await notificationController.markReadStatus(
+                                notification.id!,
+                                notification.isRead,
+                              );
+                            }
+                          },
+                          icon: Icon(
+                            !notification.isRead
+                                ? Icons.mark_email_unread_outlined
+                                : Icons.mark_email_read,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
           ],

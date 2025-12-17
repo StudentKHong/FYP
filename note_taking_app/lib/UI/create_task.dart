@@ -9,6 +9,7 @@ import 'package:note_taking_app/Controller/setting_controller.dart';
 import 'package:note_taking_app/Controller/task_controller.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
+import 'package:note_taking_app/Model/Models/notification_model.dart';
 import 'package:note_taking_app/Model/Models/task_model.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
 import 'package:note_taking_app/UI/SharedComponents/label_editor.dart';
@@ -62,6 +63,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   String? selectedReminder;
   DateTime? reminderDateTime;
 
+  final NotificationController notificationController =
+      Get.find<NotificationController>();
   final TaskController taskController = Get.find<TaskController>();
   final SettingController settingController = Get.find<SettingController>();
   final LabelController labelController = Get.find<LabelController>();
@@ -77,9 +80,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
     // Set default values.
     original = widget.task?.copyWith();
-    print("Reminder (Original): ${original?.reminderDateTime}");
     task = original?.copyWith();
-    print("Reminder (Task): ${task?.reminderDateTime}");
 
     task ??= Task(
       id: UniqueKey().toString(),
@@ -224,12 +225,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       final optionText = entry.key;
       final optionDuration = entry.value;
 
-      if (optionText.contains('start') && start != null && optionDuration != null) {
+      if (optionText.contains('start') &&
+          start != null &&
+          optionDuration != null) {
         final calculatedReminderTime = start.subtract(optionDuration);
         if (calculatedReminderTime.isAtSameMomentAs(reminder)) {
           return optionText;
         }
-      } else if (optionText.contains('end') && end != null && optionDuration != null) {
+      } else if (optionText.contains('end') &&
+          end != null &&
+          optionDuration != null) {
         final calculatedReminderTime = end.subtract(optionDuration);
         if (calculatedReminderTime.isAtSameMomentAs(reminder)) {
           return optionText;
@@ -256,6 +261,23 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         .toList();
   }
 
+  void _recalculateReminderDateTime(String? selectedReminder) {
+    final duration = options[selectedReminder.toString()];
+    if (duration != null) {
+      if (selectedReminder != null &&
+          startDateTime != null &&
+          selectedReminder.toString().contains('start')) {
+        reminderDateTime = startDateTime!.subtract(duration);
+      } else if (selectedReminder != null &&
+          endDateTime != null &&
+          selectedReminder.toString().contains('end')) {
+        reminderDateTime = endDateTime!.subtract(duration);
+      }
+    } else {
+      reminderDateTime = null;
+    }
+  }
+
   TZDateTime? convertToTZ(DateTime? dateTime) {
     if (dateTime == null) return null;
     final Location location = local;
@@ -269,7 +291,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       return;
     }
     final TZDateTime? scheduleDate = convertToTZ(reminderDateTime);
-    print(scheduleDate);
 
     if (scheduleDate == null || scheduleDate.isBefore(DateTime.now())) {
       return;
@@ -278,7 +299,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'task_reminders',
       'Task Reminder',
-      showWhen: true
+      showWhen: true,
     );
     NotificationDetails notificationDetails = NotificationDetails(
       android: androidDetails,
@@ -289,32 +310,57 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       ),
     );
 
-    String reminderText = 'Your task "${task.title}" is upcoming!';
+    String title = 'Task Reminder: ${task.name}';
+
+    String description = 'Your task "${task.title}" is upcoming!';
     if (task.reminderDateTime != null) {
-      final isBeforeStart = task.startDateTime != null && task.reminderDateTime!.isBefore(task.startDateTime!);
-      final isBeforeEnd = task.endDateTime != null && task.reminderDateTime!.isBefore(task.endDateTime!);
+      final isBeforeStart =
+          task.startDateTime != null &&
+          task.reminderDateTime!.isBefore(task.startDateTime!);
+      final isBeforeEnd =
+          task.endDateTime != null &&
+          task.reminderDateTime!.isBefore(task.endDateTime!);
 
       if (isBeforeStart) {
-        final difference = task.startDateTime!.difference(task.reminderDateTime!);
-        reminderText = '${difference.inMinutes} minute(s) before start';
+        final difference = task.startDateTime!.difference(
+          task.reminderDateTime!,
+        );
+        description = '${difference.inMinutes} minute(s) before start';
       } else if (isBeforeEnd) {
         final difference = task.endDateTime!.difference(task.reminderDateTime!);
-        reminderText = '${difference.inMinutes} minute(s) before end';
+        description = '${difference.inMinutes} minute(s) before end';
       }
     }
 
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      task.id.hashCode,
-      'Task Reminder: ${task.name}',
-      reminderText,
-      scheduleDate,
-      notificationDetails,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      payload: task.id,
-      matchDateTimeComponents: DateTimeComponents.time
+    final notificationToCreate = AppNotification(
+      id: UniqueKey().toString(),
+      title: title,
+      description: description,
+      referenceId: task.id,
+      referenceType: "task",
+      createdAt: DateTime.now(),
+      notifiedAt: scheduleDate,
+      isRead: false,
     );
+
+    final notification = await notificationController.create(
+      notificationToCreate,
+    );
+
+    if (notification != null) {
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        notification.id.hashCode,
+        title,
+        description,
+        scheduleDate,
+        notificationDetails,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        payload: task.id,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+    }
   }
 
   @override
@@ -383,7 +429,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               labelName: isForShared ? selectedLabel?.name : null,
               isViewed: isForShared ? false : true,
               isUpdated: true,
-              replaceReminder: true
+              replaceReminder: true,
             );
 
             if (widget.mode == Mode.edit) {
@@ -570,6 +616,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                     setState(() {
                                       startDateTime = dateTime;
                                       _updateHasChanged();
+                                      _recalculateReminderDateTime(
+                                        selectedReminder,
+                                      );
                                     });
                                   }
                                 },
@@ -613,6 +662,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                     setState(() {
                                       endDateTime = dateTime;
                                       _updateHasChanged();
+                                      _recalculateReminderDateTime(
+                                        selectedReminder,
+                                      );
                                     });
                                   }
                                 },
@@ -645,26 +697,26 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         items: _getReminderOptions(),
                         onChanged: (value) {
                           if (value == null) return;
-                          final duration = options[value.toString()];
+                          // final duration = options[value.toString()];
                           setState(() {
                             selectedReminder = value;
                             hasChanged = true;
-
-                            if (duration != null) {
-                              if (startDateTime != null &&
-                                  value.toString().contains('start')) {
-                                reminderDateTime = startDateTime!.subtract(
-                                  duration,
-                                );
-                              } else if (endDateTime != null &&
-                                  value.toString().contains('end')) {
-                                reminderDateTime = endDateTime!.subtract(
-                                  duration,
-                                );
-                              }
-                            } else {
-                              reminderDateTime = null;
-                            }
+                            _recalculateReminderDateTime(selectedReminder);
+                            // if (duration != null) {
+                            //   if (startDateTime != null &&
+                            //       value.toString().contains('start')) {
+                            //     reminderDateTime = startDateTime!.subtract(
+                            //       duration,
+                            //     );
+                            //   } else if (endDateTime != null &&
+                            //       value.toString().contains('end')) {
+                            //     reminderDateTime = endDateTime!.subtract(
+                            //       duration,
+                            //     );
+                            //   }
+                            // } else {
+                            //   reminderDateTime = null;
+                            // }
                           });
                         },
                       ),

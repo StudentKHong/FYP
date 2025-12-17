@@ -211,21 +211,8 @@ class TaskController extends Controller<Task> {
       );
 
       // Update reactive list and filteredList.
-      final listIndex = list.indexWhere((item) => item.id == newEntity.id);
-      if (listIndex != -1) {
-        list[listIndex] = newEntity;
-      }
-
-      final filteredListIndex = filteredList.indexWhere(
-        (item) => item.id == newEntity.id,
-      );
-      if (filteredListIndex != -1) {
-        filteredList[filteredListIndex] = newEntity;
-      }
       pushItemToTop(
         entity: newEntity,
-        listIndex: listIndex,
-        filteredListIndex: filteredListIndex,
       );
     } catch (ex) {
       errorMessage.value = ex.toString();

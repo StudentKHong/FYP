@@ -34,6 +34,7 @@ class NoteRepository extends UserRepository<Note> {
   @override
   Stream<List<Note>> watchAll() {
     return collection
+        .orderBy('isPinned', descending: true)
         .orderBy('updatedAt', descending: true)
         .snapshots(includeMetadataChanges: true)
         .asyncMap((snapshot) async {

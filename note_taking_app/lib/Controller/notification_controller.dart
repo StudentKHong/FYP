@@ -45,6 +45,7 @@ class NotificationController {
 
       final updatedNotification = currentNotification.copyWith(isRead: isRead);
       list[index] = updatedNotification;
+      list.refresh();
 
       try {
         errorMessage.value = "";
@@ -63,5 +64,11 @@ class NotificationController {
     ) {
       totalCount.value = data;
     }, onError: (ex) => errorMessage.value = ex.toString());
+  }
+
+  Future<AppNotification?> create(AppNotification appNotification) async {
+    final createdNotification = await _notificationRepository.create(appNotification) as AppNotification;
+    list.refresh();
+    return createdNotification;
   }
 }
