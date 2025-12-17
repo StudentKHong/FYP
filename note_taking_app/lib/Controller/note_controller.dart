@@ -296,15 +296,32 @@ class NoteController extends Controller<Note> {
   }
 
   Future<void> togglePinStatus(Note note) async {
-    final updatedItem = note.copyWith(isPinned: !note.isPinned);
+    final updatedItem = note.copyWith(
+      isPinned: !note.isPinned,
+      isArchived: !(note.isPinned) ? false : (note.isArchived ?? false),
+    );
     await edit([updatedItem], pushToTop: false);
   }
 
-  // Future<void> toggleArchiveStatus(String noteId, bool isArchived) async {
-  //   await _noteRepository.edit(
-  //     Note.toUpdateMap(id: noteId, isArchived: isArchived),
-  //   );
-  // }
+  Future<void> toggleArchiveStatus(Note note) async {
+    final updatedItem = note.copyWith(
+      isArchived: !(note.isArchived ?? false),
+      isPinned: !(note.isArchived ?? false) ? false : note.isPinned,
+    );
+    await edit([updatedItem], pushToTop: false);
+  }
+
+  void getArchived() {
+    errorMessage.value = "";
+    watchAllSubscription?.cancel();
+    watchAllSubscription = (repository as NoteRepository)
+        .watchArchived()
+        .listen((notes) {
+          filteredList.assignAll(notes);
+        }, onError: (ex) {
+          errorMessage.value = ex.toString();
+        });
+  }
 
   @override
   ComponentFilter<Note>? createFilter() {

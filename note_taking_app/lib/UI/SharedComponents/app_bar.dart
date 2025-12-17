@@ -17,6 +17,7 @@ import 'package:note_taking_app/UI/SharedComponents/app_theme.dart';
 import 'package:note_taking_app/UI/SharedComponents/confirmation_message.dart';
 import 'package:note_taking_app/UI/SharedComponents/share_feature.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
+import 'package:note_taking_app/UI/note_task.dart';
 import 'package:note_taking_app/UI/register.dart';
 import 'package:note_taking_app/main.dart';
 
@@ -116,6 +117,8 @@ class _HamburgerMenuState extends State<HamburgerMenu> {
   final labelController = Get.find<LabelController>();
   final roleController = Get.find<RoleController>();
   final authController = Get.find<AuthenticationController>();
+  late final NoteController archivedNotesController;
+  late final TaskController archivedTasksController;
 
   // late final int notificationCount;
   // late final List<Map<String, dynamic>> noteLabels;
@@ -133,6 +136,15 @@ class _HamburgerMenuState extends State<HamburgerMenu> {
     labelController.getTaskLabels();
     countController.getAllTasksCount();
     countController.getAllGroupsCount();
+    archivedNotesController = Get.put(NoteController(), tag: 'notes_archived');
+    archivedTasksController = Get.put(TaskController(), tag: 'tasks_archived');
+
+    archivedNotesController.getArchived();
+    archivedTasksController.getArchived();
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   noteController.getArchived();
+    //   taskController.getArchived();
+    // });
 
     // _loadNotificationCount();
     // _loadNoteData();
@@ -196,6 +208,7 @@ class _HamburgerMenuState extends State<HamburgerMenu> {
                   context: context,
                   noteLabels: labelController.noteLabels,
                   totalCount: countController.notesCount.value,
+                  archivedCount: archivedNotesController.filteredList.length,
                   noteController: noteController,
                 ),
                 Padding(
@@ -212,6 +225,7 @@ class _HamburgerMenuState extends State<HamburgerMenu> {
                   context: context,
                   taskLabels: labelController.taskLabels,
                   totalCount: countController.tasksCount.value,
+                  archivedCount: archivedTasksController.filteredList.length,
                   taskController: taskController,
                 ),
                 if (!isGuest) ...[
@@ -249,9 +263,9 @@ class NavigationButtons {
   }) {
     Get.back();
     if (routeName != null && Get.currentRoute != routeName) {
-      Get.offNamed(routeName, arguments: arguments);
+      Get.offNamed(routeName, arguments: arguments, preventDuplicates: false);
     } else if (page != null) {
-      Get.off(() => page);
+      Get.off(() => page, preventDuplicates: false);
     }
   }
 
@@ -383,6 +397,7 @@ class NavigationButtons {
     required BuildContext context,
     required List<Label> noteLabels,
     required int totalCount,
+    required int archivedCount,
     required NoteController noteController,
   }) {
     return [
@@ -404,6 +419,29 @@ class NavigationButtons {
           ),
       drawerTile(
         context: context,
+        leadingIcon: Icons.archive,
+        title: 'Archived',
+        trailingText: archivedCount.toString(),
+        onTap: () {
+          final NoteController tempController;
+          if (Get.isRegistered<NoteController>(tag: "notes_archived")) {
+            tempController = Get.put(NoteController(), tag: "notes_archived");
+          } else {
+            tempController = Get.find<NoteController>(tag: "notes_archived");
+          }
+          
+          navigate(
+            page: ListScreen<Note>(
+              title: "Archived Notes",
+              pageType: ListScreenType.archivedNotes,
+              controller: tempController,
+              onAddTap: () => Get.toNamed(Routes.createNote),
+            ),
+          );
+        },
+      ),
+      drawerTile(
+        context: context,
         leadingIcon: Icons.label,
         title: 'View All Notes',
         trailingText: totalCount.toString(),
@@ -423,6 +461,7 @@ class NavigationButtons {
     required BuildContext context,
     required List<Label> taskLabels,
     required int totalCount,
+    required int archivedCount,
     required TaskController taskController,
   }) {
     return [
@@ -442,6 +481,28 @@ class NavigationButtons {
               },
             ),
           ),
+      drawerTile(
+        context: context,
+        leadingIcon: Icons.archive,
+        title: 'Archived',
+        trailingText: archivedCount.toString(),
+        onTap: () {
+          final TaskController tempController;
+          if (Get.isRegistered<TaskController>(tag: "tasks_archived")) {
+            tempController = Get.put(TaskController(), tag: "tasks_archived");
+          } else {
+            tempController = Get.find<TaskController>(tag: "tasks_archived");
+          }
+          navigate(
+            page: ListScreen<Task>(
+              title: "Archived Tasks",
+              pageType: ListScreenType.archivedTasks,
+              controller: tempController,
+              onAddTap: () => Get.toNamed(Routes.createTask),
+            ),
+          );
+        },
+      ),
       drawerTile(
         context: context,
         leadingIcon: Icons.label,
@@ -495,8 +556,10 @@ class AdditionalOptions {
     bool hideShare = false,
     void Function(List updatedItems)? onUpdate,
   }) {
-    if (onUpdate == null || (notes == null && tasks == null && labels == null))
+    if (onUpdate == null ||
+        (notes == null && tasks == null && labels == null)) {
       return [];
+    }
 
     // Only Notes and Tasks can do all actions.
     // Labels can only access delete.
@@ -610,7 +673,9 @@ class AdditionalOptions {
                       print("Normal Delete Tasks.");
                       await controller.delete(taskIds);
                       for (String taskId in taskIds) {
-                        await flutterLocalNotificationsPlugin.cancel(taskId.hashCode);
+                        await flutterLocalNotificationsPlugin.cancel(
+                          taskId.hashCode,
+                        );
                       }
                     }
                     if (labelIds != null) {
@@ -710,7 +775,7 @@ class AdditionalOptions {
           }
 
           return [
-            if (!hidePin || labels == null)
+            if (!hidePin)
               PopupMenuItem(
                 value: !isPinned ? 'pin' : 'unpin',
                 child: ListTile(
@@ -720,7 +785,7 @@ class AdditionalOptions {
               ),
 
             // Only allow archive for notes and tasks (excluding shared notes and shared tasks).
-            if (!isForShared || labels == null || !hideArchive)
+            if (!hideArchive)
               PopupMenuItem(
                 value: !isArchived ? 'archive' : 'unarchive',
                 child: ListTile(
@@ -737,7 +802,7 @@ class AdditionalOptions {
                   title: Text('Delete'),
                 ),
               ),
-            if (!hideShare || labels == null)
+            if (!hideShare)
               PopupMenuItem(
                 value: 'share',
                 child: ListTile(

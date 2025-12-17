@@ -36,6 +36,8 @@ enum ListScreenType {
   sharedNotes,
   tasks,
   sharedTasks,
+  archivedNotes,
+  archivedTasks,
   classes,
   teams,
   noteLabels,
@@ -106,12 +108,6 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
     // }
 
     _fetchData();
-    _controller.filteredList.listen((updatedList) {
-      filteredListUpdateCount++;
-      print("filteredList updated $filteredListUpdateCount times");
-      // Optional: print first 3 items to debug
-      print("First 3 items: ${updatedList.take(3).toList()}");
-    });
   }
 
   @override
@@ -137,7 +133,16 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
         widget.pageType == ListScreenType.sharedTasks) {
       return;
     } else {
-      _controller.getAll();
+      if (widget.pageType == ListScreenType.archivedNotes &&
+          _controller is NoteController) {
+        (_controller as NoteController).getArchived();
+      } else if (widget.pageType == ListScreenType.archivedTasks &&
+          _controller is TaskController) {
+        (_controller as TaskController).getArchived();
+      } else {
+        print("Running getAll() function.");
+        _controller.getAll();
+      }
     }
   }
 
@@ -238,70 +243,77 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
     return otherDetails;
   }
 
+  void sortList() {
+    _controller.filteredList.sort((a, b) {
+      final aPinned = (a as dynamic).isPinned ?? false;
+      final bPinned = (b as dynamic).isPinned ?? false;
+
+      // Sort pin first.
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+
+      // Then, sort date created.
+      final aTime = (a as dynamic).createdAt ?? DateTime.now();
+      final bTime = (b as dynamic).createdAt ?? DateTime.now();
+      return bTime.compareTo(aTime);
+    });
+  }
+
   List<IconButton> _buildIconButtons(T item) {
-    void sortList() {
-      _controller.filteredList.sort((a, b) {
-        final aPinned = (a as dynamic).isPinned ?? false;
-        final bPinned = (b as dynamic).isPinned ?? false;
-
-        // Sort pin first.
-        if (aPinned && !bPinned) return -1;
-        if (!aPinned && bPinned) return 1;
-
-        // Then, sort date created.
-        final aTime = (a as dynamic).createdAt ?? DateTime.now();
-        final bTime = (b as dynamic).createdAt ?? DateTime.now();
-        return bTime.compareTo(aTime);
-      });
-    }
-
     final List<IconButton> iconButtons = [];
     if (item is Note || item is Task) {
       iconButtons.addAll([
-        IconButton(
-          onPressed: () {
-            final isPinned = (item as dynamic).isPinned;
-            final newItem = (item as dynamic).copyWith(isPinned: !isPinned);
+        if (widget.pageType != ListScreenType.archivedNotes &&
+            widget.pageType != ListScreenType.archivedTasks)
+          IconButton(
+            onPressed: () {
+              final isPinned = (item as dynamic).isPinned;
+              final isArchived = (item as dynamic).isArchived ?? false;
+              final newItem = (item as dynamic).copyWith(
+                isPinned: !isPinned,
+                isArchived: !isPinned ? false : isArchived,
+              );
 
-            final index = _controller.filteredList.indexOf(item);
-            if (index != -1) {
-              _controller.filteredList.removeAt(index);
-              _controller.filteredList.insert(0, newItem);
-              sortList();
-            }
-            if (item is Note) {
-              (_controller as NoteController).togglePinStatus(item);
-            } else if (item is Task) {
-              (_controller as TaskController).edit([newItem]);
-            }
-          },
-          icon: Icon(
-            (item as dynamic).isPinned
-                ? Icons.push_pin
-                : Icons.push_pin_outlined,
-            color: Colors.black,
+              final index = _controller.filteredList.indexOf(item);
+              if (index != -1) {
+                _controller.filteredList[index] = newItem;
+                // _controller.filteredList.removeAt(index);
+                // _controller.filteredList.insert(0, newItem);
+                sortList();
+              }
+              if (item is Note) {
+                (_controller as NoteController).togglePinStatus(item);
+              } else if (item is Task) {
+                (_controller as TaskController).togglePinStatus(item);
+              }
+            },
+            icon: Icon(
+              (item as dynamic).isPinned
+                  ? Icons.push_pin
+                  : Icons.push_pin_outlined,
+              color: Colors.black,
+            ),
           ),
-        ),
         IconButton(
           onPressed: () async {
-            final isArchived = (item as dynamic).isArchived;
-            final newItem = (item as dynamic).copyWith(isArchived: !isArchived);
+            // final isPinned = (item as dynamic).isPinned;
+            // final isArchived = (item as dynamic).isArchived ?? false;
+            // final newItem = (item as dynamic).copyWith(isArchived: !isArchived, isPinned: !isArchived ? false : isPinned);
 
             final index = _controller.filteredList.indexOf(item);
             if (index != -1) {
               _controller.filteredList.removeAt(index);
-              _controller.filteredList.insert(0, newItem);
-              sortList();
+              // sortList();
             }
 
             if (item is Note) {
-              await (_controller as NoteController).edit([newItem]);
+              await (_controller as NoteController).toggleArchiveStatus(item);
             } else if (item is Task) {
-              await (_controller as TaskController).edit([newItem]);
+              await (_controller as TaskController).toggleArchiveStatus(item);
             }
           },
           icon: Icon(
-            (item as dynamic).isArchived
+            (item as dynamic).isArchived ?? false
                 ? Icons.archive
                 : Icons.archive_outlined,
             color: Colors.black,
@@ -337,7 +349,7 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
       content: [item.description ?? '', dateCreated],
       otherDetails: otherDetails,
       onTap: onTap,
-      iconButtons: iconButtons,
+      iconButtons: _selectionMode == SelectionMode.none ? iconButtons : null,
     );
   }
 
@@ -467,6 +479,11 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
                                             ListScreenType.sharedTasks,
                                     hidePin: true,
                                     hideArchive: true,
+                                    hideShare:
+                                        widget.pageType ==
+                                            ListScreenType.noteLabels ||
+                                        widget.pageType ==
+                                            ListScreenType.taskLabels ? true : false,
                                   ),
                                   IconButton(
                                     onPressed: () {
@@ -663,7 +680,7 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
                                   ? () => _selectItem(item)
                                   : null,
                               onLongPress:
-                                  _selectionMode == SelectionMode.none ||
+                                  _selectionMode == SelectionMode.none &&
                                       widget.pageType != ListScreenType.classes
                                   ? () {
                                       setState(() {

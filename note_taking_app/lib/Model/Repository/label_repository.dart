@@ -62,6 +62,39 @@ class LabelRepository extends UserRepository<Label> {
     });
   }
 
+  @override
+  Future<void> delete(List<String> componentIds) async {
+    final uid = authController.user?.uid;
+    if (uid == null) return;
+
+    final noteCollection = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('notes');
+
+    WriteBatch? batch;
+
+    for (final id in componentIds) {
+      // Delete label.
+      await collection.doc(id).delete();
+
+      // Remove all dependencies to the label.
+      final querySnapshot = await noteCollection
+          .where('labelId', isEqualTo: id)
+          .get();
+
+      batch ??= FirebaseFirestore.instance.batch();
+
+      for (var document in querySnapshot.docs) {
+        batch.update(document.reference, {'labelId': null});
+      }
+    }
+
+    if (batch != null) {
+      await batch.commit();
+    }
+  }
+
   Future<String> generateLabel(String text, List<String> labels) async {
     final url = Uri.parse("http://192.168.68.102:8000/generate-label");
     final response = await http.post(
@@ -74,7 +107,9 @@ class LabelRepository extends UserRepository<Label> {
       final responseData = jsonDecode(response.body);
       return responseData['label'];
     } else {
-      throw Exception('Failed to generate label: ${response.statusCode}, ${response.body}');
+      throw Exception(
+        'Failed to generate label: ${response.statusCode}, ${response.body}',
+      );
     }
   }
 }

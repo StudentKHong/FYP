@@ -80,12 +80,14 @@ class Routes {
 
         final initialLabel = args?['initialLabel'] as Label?;
         final isLabelReadOnly = args?['isLabelReadOnly'] as bool? ?? false;
+
+        final tempController = Get.put(NoteController(), tag: "notes_label_$labelId");
         return ListScreen<Note>(
           title: initialLabel?.name ?? 'Unknown Label',
           pageType: ListScreenType.notes,
-          controller: Get.find<NoteController>(),
+          controller: tempController,
           customFetchFunction: () async {
-            await Get.find<NoteController>().getByLabel(labelId);
+            await tempController.getByLabel(labelId);
           },
           onAddTap: () => Get.to(
             NoteDetailScreen(
@@ -114,12 +116,14 @@ class Routes {
 
         final initialLabel = args?['initialLabel'] as Label?;
         final isLabelReadOnly = args?['isLabelReadOnly'] as bool? ?? false;
+
+        final tempController = Get.put(TaskController(), tag: "tasks_label_$labelId");
         return ListScreen<Task>(
           title: initialLabel?.name ?? 'Unknown Label',
-          pageType: ListScreenType.notes,
-          controller: Get.find<TaskController>(),
+          pageType: ListScreenType.tasks,
+          controller: tempController,
           customFetchFunction: () async {
-            await Get.find<TaskController>().getByLabel(labelId);
+            await tempController.getByLabel(labelId);
           },
           onAddTap: () => Get.to(
             TaskDetailScreen(

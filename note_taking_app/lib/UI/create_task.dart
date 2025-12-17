@@ -356,7 +356,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         notificationDetails,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         payload: task.id,
         matchDateTimeComponents: DateTimeComponents.time,
       );

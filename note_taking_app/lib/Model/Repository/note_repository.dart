@@ -23,6 +23,10 @@ class NoteRepository extends UserRepository<Note> {
     final documentReference = await collection.addOfflineSafe(data);
     final createdEntity = await documentReference.get();
 
+    if (entity.label?.id != null) {
+      Get.find<LabelRepository>().incrementCount(entity.label!.id!, 1);
+    }
+
     // Transform data into Note object (causing label to be overriden).
     // Restore the original label.
     Note newNote = fromFirestore(createdEntity);
@@ -34,6 +38,7 @@ class NoteRepository extends UserRepository<Note> {
   @override
   Stream<List<Note>> watchAll() {
     return collection
+        .where('isArchived', isNotEqualTo: true)
         .orderBy('isPinned', descending: true)
         .orderBy('updatedAt', descending: true)
         .snapshots(includeMetadataChanges: true)
@@ -56,14 +61,24 @@ class NoteRepository extends UserRepository<Note> {
               final labelDocumentSnapshot = await Repository.baseDocument(
                 uid,
               ).collection('labels').doc(labelId).get();
-              final label = Label.fromFirestore(labelDocumentSnapshot);
-              data = data.copyWith(label: label);
+              if (labelDocumentSnapshot.exists) {
+                final label = Label.fromFirestore(labelDocumentSnapshot);
+                data = data.copyWith(label: label);
+              }
             }
             list.add(data);
           }
 
           return list;
         });
+  }
+
+  Stream<List<Note>> watchArchived() {
+    return collection
+        .where('isArchived', isEqualTo: true)
+        .orderBy('updatedAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map(fromFirestore).toList());
   }
 
   Stream<List<Note>> watchByGroup(String groupId, String groupType) {
@@ -119,6 +134,14 @@ class NoteRepository extends UserRepository<Note> {
         .map((snapshot) => snapshot.docs.map(fromFirestore).toList());
   }
 
+  @override
+  Stream<int> watchAllCount() {
+    return collection
+        .where('isArchived', isNotEqualTo: true)
+        .snapshots(includeMetadataChanges: true)
+        .map((snapshot) => snapshot.docs.length);
+  }
+
   Future<int> getNoteCount(String labelId) async {
     final snapshot = await collection
         .where('labelId', isEqualTo: labelId)
@@ -166,20 +189,40 @@ class NoteRepository extends UserRepository<Note> {
     return createdNotes;
   }
 
-  // @override
-  // Future<Note> edit(Note entity) async {
-  //   final documentReference = collection.doc(entity['id']);
-  //   entity.remove('id');
-  //   documentReference.setOfflineSafe(entity);
-  //   final documentSnapshot = await documentReference.get();
+  @override
+  Future<List<Note>> edit(List<Note> entities) async {
+    final batch = FirebaseFirestore.instance.batch();
 
-  //   // Transform data into Note object (causing label to be overriden).
-  //   // Restore the original label.
-  //   Note updatedNote = fromFirestore(documentSnapshot);
-  //   updatedNote = updatedNote.copyWith(label: entity['label'] as Label?);
+    List<Note> updatedEntities = [];
+    for (final entity in entities) {
+      if (entity.id == null) {
+        continue;
+      }
+      // Capture old document snapshot. (For updating the old label's count.)
+      final oldSnapshot = await collection.doc(entity.id).get();
+      final oldNote = fromFirestore(oldSnapshot);
+      final oldLabelId = oldNote.label?.id;
 
-  //   return updatedNote;
-  // }
+      // Update note.
+      final documentReference = collection.doc(entity.id);
+      final dataToUpdate = entity.toMap();
+      dataToUpdate.remove('id');
+      batch.update(documentReference, dataToUpdate);
+
+      // Update old and current labels' counts.
+      if (oldLabelId != entity.label?.id) {
+        if (oldLabelId != null) {
+          Get.find<LabelRepository>().decrementCount(oldLabelId, -1);
+        }
+        if (entity.label?.id != null) {
+          Get.find<LabelRepository>().incrementCount(entity.label!.id!, 1);
+        }
+      }
+      updatedEntities.add(entity);
+    }
+    await batch.commit();
+    return updatedEntities;
+  }
 
   Future<Note> editShared(Note note, String groupId, String groupType) async {
     final collection = FirebaseFirestore.instance

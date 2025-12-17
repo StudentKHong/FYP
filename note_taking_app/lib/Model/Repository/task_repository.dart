@@ -19,6 +19,8 @@ class TaskRepository extends UserRepository<Task> {
   @override
   Stream<List<Task>> watchAll() {
     return collection
+        .where('isArchived', isNotEqualTo: true)
+        .orderBy('isPinned', descending: true)
         .orderBy('updatedAt', descending: true)
         .snapshots(includeMetadataChanges: true)
         .asyncMap((snapshot) async {
@@ -40,14 +42,25 @@ class TaskRepository extends UserRepository<Task> {
               final labelDocumentSnapshot = await Repository.baseDocument(
                 uid,
               ).collection('labels').doc(labelId).get();
-              final label = Label.fromFirestore(labelDocumentSnapshot);
-              data = data.copyWith(label: label);
+
+              if (labelDocumentSnapshot.exists) {
+                final label = Label.fromFirestore(labelDocumentSnapshot);
+                data = data.copyWith(label: label);
+              }
             }
             list.add(data);
           }
 
           return list;
         });
+  }
+
+  Stream<List<Task>> watchArchived() {
+    return collection
+        .where('isArchived', isEqualTo: true)
+        .orderBy('updatedAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map(fromFirestore).toList());
   }
 
   Stream<List<Task>> watchByGroup(String groupId, String groupType) {
@@ -103,6 +116,14 @@ class TaskRepository extends UserRepository<Task> {
         .map((snapshot) => snapshot.docs.map(fromFirestore).toList());
   }
 
+  @override
+  Stream<int> watchAllCount() {
+    return collection
+        .where('isArchived', isNotEqualTo: true)
+        .snapshots(includeMetadataChanges: true)
+        .map((snapshot) => snapshot.docs.length);
+  }
+
   Future<int> getTaskCount(String labelId) async {
     final snapshot = await collection
         .where('labelId', isEqualTo: labelId)
@@ -150,15 +171,40 @@ class TaskRepository extends UserRepository<Task> {
     return createdTasks;
   }
 
-  // @override
-  // Future<Task> edit(Task entity) async {
-  //   final dataToUpdate = entity.toMap();
-  //   final documentReference = collection.doc(dataToUpdate['id']);
-  //   dataToUpdate.remove('id');
-  //   documentReference.setOfflineSafe(dataToUpdate);
+  @override
+  Future<List<Task>> edit(List<Task> entities) async {
+    final batch = FirebaseFirestore.instance.batch();
 
-  //   return entity;
-  // }
+    List<Task> updatedEntities = [];
+    for (final entity in entities) {
+      if (entity.id == null) {
+        continue;
+      }
+      // Capture old document snapshot. (For updating the old label's count.)
+      final oldSnapshot = await collection.doc(entity.id).get();
+      final oldTask = fromFirestore(oldSnapshot);
+      final oldLabelId = oldTask.label?.id;
+
+      // Update task.
+      final documentReference = collection.doc(entity.id);
+      final dataToUpdate = entity.toMap();
+      dataToUpdate.remove('id');
+      batch.update(documentReference, dataToUpdate);
+
+      // Update old and current labels' counts.
+      if (oldLabelId != entity.label?.id) {
+        if (oldLabelId != null) {
+          Get.find<LabelRepository>().decrementCount(oldLabelId, -1);
+        }
+        if (entity.label?.id != null) {
+          Get.find<LabelRepository>().incrementCount(entity.label!.id!, 1);
+        }
+      }
+      updatedEntities.add(entity);
+    }
+    await batch.commit();
+    return updatedEntities;
+  }
 
   Future<Task> editShared(Task task, String groupId, String groupType) async {
     final collection = FirebaseFirestore.instance

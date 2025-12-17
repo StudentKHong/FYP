@@ -110,6 +110,7 @@ class CustomExtendedCard extends StatelessWidget {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: iconButtons!.map((button) {
                           return SizedBox(width: 30, height: 30, child: button);
                         }).toList(),

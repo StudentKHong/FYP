@@ -280,6 +280,16 @@ class TaskController extends Controller<Task> {
     }
   }
 
+  Future<void> togglePinStatus(Task task) async {
+    final updatedItem = task.copyWith(isPinned: !task.isPinned);
+    await edit([updatedItem], pushToTop: false);
+  }
+
+  Future<void> toggleArchiveStatus(Task task) async {
+    final updatedItem = task.copyWith(isArchived: !(task.isArchived ?? true));
+    await edit([updatedItem], pushToTop: false);
+  }
+
   @override
   void filter({DateTimeRange? taskPeriod}) {
     try {
@@ -300,6 +310,18 @@ class TaskController extends Controller<Task> {
     } catch (e) {
       errorMessage.value = "Something went wrong";
     }
+  }
+
+  void getArchived() {
+    errorMessage.value = "";
+    watchAllSubscription?.cancel();
+    watchAllSubscription = (repository as TaskRepository)
+        .watchArchived()
+        .listen((tasks) {
+          filteredList.assignAll(tasks);
+        }, onError: (ex) {
+          errorMessage.value = ex.toString();
+        });
   }
 
   @override

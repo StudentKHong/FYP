@@ -193,7 +193,6 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
     try {
       // Update component in Firebase Firestore.
       errorMessage.value = "";
-      print("Edit is triggered.");
       final newEntities = await repository.edit(entities);
 
       // Update reactive list and filteredList.

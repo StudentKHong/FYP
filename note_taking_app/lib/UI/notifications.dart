@@ -72,9 +72,10 @@ class NotificationsScreen extends StatelessWidget {
                             }
                           },
                           icon: Icon(
-                            !notification.isRead
+                            notification.isRead
                                 ? Icons.mark_email_unread_outlined
                                 : Icons.mark_email_read,
+                            color: Colors.black,
                           ),
                         ),
                       ],
