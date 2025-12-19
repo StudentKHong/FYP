@@ -5,20 +5,16 @@ import 'package:note_taking_app/Model/Models/user_model.dart';
 import 'package:note_taking_app/Model/Repository/auth_repository.dart';
 import 'package:note_taking_app/UI/Navigation/named_routes.dart';
 
-class AuthenticationController {
+class AuthenticationController extends GetxController {
   final AuthenticationRepository _authRepository =
       Get.find<AuthenticationRepository>();
-  User? _user;
+  Rx<User?> user = Rx<User?>(null);
   String? errorMessage;
 
   AuthenticationController();
 
-  User? get user {
-    return _user;
-  }
-
   void checkAuthentication() {
-    if (user == null) {
+    if (user.value == null) {
       final previousScreen = Get.currentRoute;
       Get.offAllNamed(Routes.login, arguments: previousScreen);
       throw Exception("Please login again to continue.");
@@ -30,7 +26,7 @@ class AuthenticationController {
       errorMessage = "";
       // Login user through Firebase Authentication.
       User? user = await _authRepository.login(email, password);
-      _user = user;
+      this.user.value = user;
 
       // Navigate to the correct screen after successfull login.
       final previousScreen = Get.arguments;
@@ -59,7 +55,7 @@ class AuthenticationController {
     try {
       errorMessage = "";
       User? user = await _authRepository.loginAnonymously();
-      _user = user;
+      this.user.value = user;
 
       // Navigate to the correct screen after successfull login.
       final previousScreen = Get.arguments;
@@ -89,7 +85,7 @@ class AuthenticationController {
         email,
         password,
       );
-      _user = user;
+      this.user.value = user;
       Get.offAllNamed(Routes.home);
     } catch (ex) {
       errorMessage = ex.toString();
@@ -101,7 +97,7 @@ class AuthenticationController {
     try {
       errorMessage = "";
       _authRepository.signOut();
-      _user = null;
+      user.value = null;
     } on firebase_auth.FirebaseAuthException catch (ex) {
       errorMessage = ex.message;
     } catch (ex) {
@@ -157,7 +153,7 @@ class AuthenticationController {
     try {
       errorMessage = "";
       await _authRepository.updateProfile(name, email, password, profileUrl);
-      _user = user;
+      user = user;
     } catch (ex) {
       if (ex.toString() == "") {
         errorMessage = "Failed to update profile.";

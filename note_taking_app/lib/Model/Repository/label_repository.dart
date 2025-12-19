@@ -64,7 +64,7 @@ class LabelRepository extends UserRepository<Label> {
 
   @override
   Future<void> delete(List<String> componentIds) async {
-    final uid = authController.user?.uid;
+    final uid = authController.user.value?.uid;
     if (uid == null) return;
 
     final noteCollection = FirebaseFirestore.instance
@@ -95,8 +95,8 @@ class LabelRepository extends UserRepository<Label> {
     }
   }
 
-  Future<String> generateLabel(String text, List<String> labels) async {
-    final url = Uri.parse("http://192.168.68.102:8000/generate-label");
+  Future<List<String>> generateLabel(String text, List<String> labels) async {
+    final url = Uri.parse("http://127.0.0.1:8000/generate-label");
     final response = await http.post(
       url,
       headers: {"Content-Type": "application/json"},

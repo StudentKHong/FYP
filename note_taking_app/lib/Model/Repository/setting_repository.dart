@@ -10,7 +10,7 @@ class SettingRepository {
       Get.find<AuthenticationController>();
 
   CollectionReference get collection {
-    final uid = _authController.user?.uid;
+    final uid = _authController.user.value?.uid;
 
     if (uid == null || uid.isEmpty) {
       throw Exception('Please login again to continue.');

@@ -107,7 +107,7 @@ class UploadImageService extends GetxService {
     final authController = Get.find<AuthenticationController>();
     final documentSnapshot = await FirebaseFirestore.instance
         .collection('users')
-        .doc(authController.user!.uid)
+        .doc(authController.user.value!.uid)
         .collection('notes')
         .doc(noteId)
         .get();

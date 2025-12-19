@@ -34,8 +34,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    nameController.text = authController.user?.name ?? "";
-    emailController.text = authController.user?.email ?? "";
+    nameController.text = authController.user.value?.name ?? "";
+    emailController.text = authController.user.value?.email ?? "";
   }
 
   @override
@@ -60,8 +60,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: profilePicRadius * 2,
             height: profilePicRadius * 2,
             child: CircleAvatar(
-              backgroundImage: authController.user?.profileUrl != null
-                  ? NetworkImage(authController.user!.profileUrl!)
+              backgroundImage: authController.user.value?.profileUrl != null
+                  ? NetworkImage(authController.user.value!.profileUrl!)
                   : AssetImage('assets/profile_pic.jpg'),
             ),
           ),

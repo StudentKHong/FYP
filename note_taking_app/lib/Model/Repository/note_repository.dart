@@ -42,34 +42,43 @@ class NoteRepository extends UserRepository<Note> {
         .orderBy('isPinned', descending: true)
         .orderBy('updatedAt', descending: true)
         .snapshots(includeMetadataChanges: true)
-        .asyncMap((snapshot) async {
-          // Check and obtain current user uid.
-          if (authController.user == null) {
-            return <Note>[];
-          }
-          final uid = authController.user!.uid;
+        .map((snapshot) {
+          return snapshot.docs.map((document) {
+            final note = fromFirestore(document);
+            return note;
+            // final labelId = note.label?.id;
 
-          List<Note> list = [];
+            // return labelId != null && labelsMap.containsKey(labelId)
+            //     ? note.copyWith(label: labelsMap[labelId])
+            //     : note;
+          }).toList();
+          // // Check and obtain current user uid.
+          // if (authController.user == null) {
+          //   return <Note>[];
+          // }
+          // final uid = authController.user.value!.uid;
 
-          for (final document in snapshot.docs) {
-            // Fetch note details, including labelId.
-            Note data = fromFirestore(document);
+          // List<Note> list = [];
 
-            // Fetch label details using labelId.
-            final labelId = data.label?.id;
-            if (labelId != null) {
-              final labelDocumentSnapshot = await Repository.baseDocument(
-                uid,
-              ).collection('labels').doc(labelId).get();
-              if (labelDocumentSnapshot.exists) {
-                final label = Label.fromFirestore(labelDocumentSnapshot);
-                data = data.copyWith(label: label);
-              }
-            }
-            list.add(data);
-          }
+          // for (final document in snapshot.docs) {
+          //   // Fetch note details, including labelId.
+          //   Note data = fromFirestore(document);
 
-          return list;
+          //   // Fetch label details using labelId.
+          //   final labelId = data.label?.id;
+          //   if (labelId != null) {
+          //     final labelDocumentSnapshot = await Repository.baseDocument(
+          //       uid,
+          //     ).collection('labels').doc(labelId).get();
+          //     if (labelDocumentSnapshot.exists) {
+          //       final label = Label.fromFirestore(labelDocumentSnapshot);
+          //       data = data.copyWith(label: label);
+          //     }
+          //   }
+          //   list.add(data);
+          // }
+
+          // return list;
         });
   }
 
@@ -99,10 +108,10 @@ class NoteRepository extends UserRepository<Note> {
         .snapshots(includeMetadataChanges: true)
         .asyncMap((snapshot) async {
           // Check and obtain current user uid.
-          if (authController.user == null) {
+          if (authController.user.value == null) {
             return <Note>[];
           }
-          final uid = authController.user!.uid;
+          final uid = authController.user.value!.uid;
 
           List<Note> list = [];
 

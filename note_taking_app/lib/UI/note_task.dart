@@ -223,6 +223,9 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
         labelName = item.label?.name ?? item.labelName;
       } else if (item is Task) {
         labelName = item.label?.name ?? item.labelName;
+        print("LABEL NAME (In Archived): $labelName");
+        print("ITEM.LABEL.NAME (In Archived): ${item.label?.name}");
+        print("ITEM.LABELNAME (In Archived): ${item.labelName}");
       }
       if (labelName != null) {
         otherDetails.add(labelName);

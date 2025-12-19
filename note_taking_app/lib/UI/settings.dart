@@ -121,6 +121,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       if (settingController.currentSettings.value == null) {
                         return;
                       }
+                      setState(() {
+                        
+                      });
                       await settingController.edit(notificationsEnabled: value);
                     });
                   },
@@ -132,11 +135,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Reminder',
                     items: reminderSettings,
                     selectedValue: settingController.getReminderOption(),
-                    onChanged: (value) {
+                    onChanged: settings!.notificationsEnabled ? (value) {
                       SchedulerBinding.instance.addPostFrameCallback((_) {
                         settingController.setSelectedReminder(value);
                       });
-                    },
+                    }: null,
                     isColumn: false,
                   ),
                 ),

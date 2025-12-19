@@ -12,7 +12,7 @@ class CustomSearchBar extends StatefulWidget {
 }
 
 class _CustomSearchBarState extends State<CustomSearchBar> {
-  Timer? _debounce;
+  // Timer? _debounce;
   
   @override
   Widget build(BuildContext context) {
@@ -21,13 +21,13 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
       leading: Icon(Icons.search),
       hintText: 'Enter a keyword...',
       onChanged: (value) {
-        if (_debounce?.isActive ?? false) {
-          _debounce!.cancel();
-        }
+        // if (_debounce?.isActive ?? false) {
+        //   _debounce!.cancel();
+        // }
 
-        _debounce = Timer(Duration(milliseconds: 500), () {
+        // _debounce = Timer(Duration(milliseconds: 500), () {
           widget.onSearch(value);
-        });
+        // });
       },
       onSubmitted: widget.onSearch
     );

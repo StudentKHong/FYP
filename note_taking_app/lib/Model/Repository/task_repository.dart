@@ -9,12 +9,25 @@ import 'package:note_taking_app/Service/conectivity_service.dart';
 import 'package:note_taking_app/Service/offline_first_service.dart';
 
 class TaskRepository extends UserRepository<Task> {
+  final labelsMap = <String, Label>{}.obs;
+
   TaskRepository()
     : super(
         collectionBuilder: (uid) =>
             Repository.baseDocument(uid).collection('tasks'),
         fromFirestore: (document) => Task.fromFirestore(document),
       );
+
+  Stream<List<Label>> watchLabels() {
+    final uid = authController.user.value!.uid;
+    return Repository.baseDocument(uid).collection('labels').snapshots().map((
+      snapshot,
+    ) {
+      final labels = snapshot.docs.map(Label.fromFirestore).toList();
+      labelsMap.assignAll({for (var label in labels) label.id ?? "": label});
+      return labels;
+    });
+  }
 
   @override
   Stream<List<Task>> watchAll() {
@@ -23,35 +36,43 @@ class TaskRepository extends UserRepository<Task> {
         .orderBy('isPinned', descending: true)
         .orderBy('updatedAt', descending: true)
         .snapshots(includeMetadataChanges: true)
-        .asyncMap((snapshot) async {
-          // Check and obtain current user uid.
-          if (authController.user == null) {
-            return <Task>[];
-          }
-          final uid = authController.user!.uid;
+        .map((snapshot) {
+          return snapshot.docs.map((document) {
+            final note = fromFirestore(document);
+            final labelId = note.label?.id;
 
-          List<Task> list = [];
+            return labelId != null && labelsMap.containsKey(labelId)
+                ? note.copyWith(label: labelsMap[labelId])
+                : note;
+          }).toList();
+          // // Check and obtain current user uid.
+          // if (authController.user == null) {
+          //   return <Task>[];
+          // }
+          // final uid = authController.user.value!.uid;
 
-          for (final document in snapshot.docs) {
-            // Fetch task details, including labelId.
-            Task data = fromFirestore(document);
+          // List<Task> list = [];
 
-            // Fetch label details using labelId.
-            final labelId = data.label?.id;
-            if (labelId != null) {
-              final labelDocumentSnapshot = await Repository.baseDocument(
-                uid,
-              ).collection('labels').doc(labelId).get();
+          // for (final document in snapshot.docs) {
+          //   // Fetch task details, including labelId.
+          //   Task data = fromFirestore(document);
 
-              if (labelDocumentSnapshot.exists) {
-                final label = Label.fromFirestore(labelDocumentSnapshot);
-                data = data.copyWith(label: label);
-              }
-            }
-            list.add(data);
-          }
+          //   // Fetch label details using labelId.
+          //   final labelId = data.label?.id;
+          //   if (labelId != null) {
+          //     final labelDocumentSnapshot = await Repository.baseDocument(
+          //       uid,
+          //     ).collection('labels').doc(labelId).get();
 
-          return list;
+          //     if (labelDocumentSnapshot.exists) {
+          //       final label = Label.fromFirestore(labelDocumentSnapshot);
+          //       data = data.copyWith(label: label);
+          //     }
+          //   }
+          //   list.add(data);
+          // }
+
+          // return list;
         });
   }
 
@@ -81,10 +102,10 @@ class TaskRepository extends UserRepository<Task> {
         .snapshots(includeMetadataChanges: true)
         .asyncMap((snapshot) async {
           // Check and obtain current user uid.
-          if (authController.user == null) {
+          if (authController.user.value == null) {
             return <Task>[];
           }
-          final uid = authController.user!.uid;
+          final uid = authController.user.value!.uid;
 
           List<Task> list = [];
 

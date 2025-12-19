@@ -172,7 +172,7 @@ class _HamburgerMenuState extends State<HamburgerMenu> {
 
   @override
   Widget build(BuildContext context) {
-    final isGuest = authController.user?.userType == UserType.guest;
+    final isGuest = authController.user.value?.userType == UserType.guest;
 
     return Drawer(
       width: MediaQuery.of(context).size.width,
@@ -312,7 +312,7 @@ class NavigationButtons {
     required AuthenticationController authController,
     required int notificationCount,
   }) {
-    final user = authController.user;
+    final user = authController.user.value;
     // final email = user?.email;
     final profileUrl = user?.profileUrl;
     final userName = user?.name;

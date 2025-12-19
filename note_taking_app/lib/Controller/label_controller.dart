@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/base_controller.dart';
+import 'package:note_taking_app/Controller/role_controller.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
 import 'package:note_taking_app/Model/Repository/label_repository.dart';
@@ -112,31 +113,59 @@ class LabelController extends Controller<Label> {
           : taskLabels;
       final labelNames = existingLabels.map((label) => label.name).toList();
       print("Existing Label Names: $labelNames");
-      final labelName = await labelRepository.generateLabel(text, labelNames);
+      final moreLabelsToConsider = _defineDefaultLabels();
+      print("More Label Names: $moreLabelsToConsider");
+      final compiledList = [...labelNames, ...moreLabelsToConsider];
+      final suggestedLabelNames = await labelRepository.generateLabel(
+        text,
+        compiledList,
+      );
       print("Text: $text");
-      print("Label Names: $labelName");
-      print(labelName);
+      print("Label Names: $suggestedLabelNames");
 
       // Check if label already exists.
-      final exist = list.any((label) => label.name == labelName);
+      final exist = list.any(
+        (label) => suggestedLabelNames.contains(label.name),
+      );
       if (exist) {
-        final label = list.firstWhere((label) => label.name == labelName);
-        suggestedLabels.assignAll([label]);
+        final labels = list
+            .where((label) => suggestedLabelNames.contains(label.name))
+            .toList();
+        suggestedLabels.assignAll(labels);
       } else {
         // Not creating in Firebase Firestore yet, just return the new label.
         // Only create when user selects the label.
-        final newLabel = Label(
-          id: UniqueKey().toString(),
-          name: labelName,
-          type: forType,
-          count: 0,
-        );
-        suggestedLabels.assignAll([newLabel]);
+        final newLabels = suggestedLabelNames
+            .map(
+              (labelName) => Label(
+                id: UniqueKey().toString(),
+                name: labelName,
+                type: forType,
+                count: 0,
+              ),
+            )
+            .toList();
+        suggestedLabels.assignAll(newLabels);
       }
     } catch (ex) {
       errorMessage.value = ex.toString();
       debugPrint(ex.toString());
     }
+  }
+
+  // Generate a list of labels that AI can consider when generating label.
+  List<String> _defineDefaultLabels() {
+    final role = Get.find<RoleController>().getUserRole();
+    if (role == null) return [];
+
+    if (role == UserType.student) {
+      return ["Math", "Biology", "History", "Computer Science", "Economics"];
+    } else if (role == UserType.teacher) {
+      return ["Grading", "Exam", "Lecture", "Assignment", "Revision"];
+    } else if (role == UserType.worker) {
+      return ["Meeting", "Action Item", "Project", "Decision", "Planning"];
+    }
+    return [];
   }
 
   void getNoteLabels() {

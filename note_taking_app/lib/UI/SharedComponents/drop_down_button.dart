@@ -5,7 +5,7 @@ class CustomDropDownBox extends StatelessWidget {
   final String title;
   final List<String> items;
   final String selectedValue;
-  final ValueChanged onChanged;
+  final ValueChanged? onChanged;
   final bool isColumn;
 
   const CustomDropDownBox({
@@ -13,7 +13,7 @@ class CustomDropDownBox extends StatelessWidget {
     required this.title,
     required this.items,
     required this.selectedValue,
-    required this.onChanged,
+    this.onChanged,
     this.isColumn = true,
   });
 
@@ -21,7 +21,9 @@ class CustomDropDownBox extends StatelessWidget {
     return [
       Text(
         title,
-        style: Theme.of(context).textTheme.bodyMedium,
+        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+          color: onChanged == null ? Colors.grey.shade400 : null,
+        ),
       ),
       DropdownButton2(
         isExpanded: true,
@@ -38,6 +40,12 @@ class CustomDropDownBox extends StatelessWidget {
             )
             .toList(),
         onChanged: onChanged,
+        disabledHint: Text(
+          selectedValue,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium!.copyWith(color: Colors.grey.shade400),
+        ),
         buttonStyleData: ButtonStyleData(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(3),
@@ -55,7 +63,7 @@ class CustomDropDownBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = _buildContent(context);
-    
+
     return Padding(
       padding: const EdgeInsets.only(top: 10, bottom: 10),
       child: isColumn
@@ -63,7 +71,13 @@ class CustomDropDownBox extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: content,
             )
-          : Row(children: [Expanded(child: content[0]), const SizedBox(width: 10), Expanded(child: content[1])]),
+          : Row(
+              children: [
+                Expanded(child: content[0]),
+                const SizedBox(width: 10),
+                Expanded(child: content[1]),
+              ],
+            ),
     );
   }
 }

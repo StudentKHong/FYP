@@ -9,13 +9,15 @@ class Info {
 }
 
 class CustomInfoButton extends StatelessWidget {
+  final Color color;
   final List<Info> infoDetails;
 
-  const CustomInfoButton({super.key, required this.infoDetails});
+  const CustomInfoButton({super.key, this.color = Colors.white, required this.infoDetails});
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
+      color: color,
       onPressed: () {
         showPopover(
           context: context,

@@ -20,7 +20,7 @@ class AttachmentRepository extends UserRepository<Attachment> {
   String? get orderByField => null;
 
   Stream<List<AttachmentComponent>> getList() {
-    final uid = authController.user?.uid;
+    final uid = authController.user.value?.uid;
     if (uid == null) {
       return Stream.empty();
     }

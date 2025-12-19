@@ -55,7 +55,7 @@
 //     if (user == null || user.uid.isEmpty) {
 //       throw Exception('Please login again to continue.');
 //     }
-//     final uid = _sharedNoteRepository.authController.user!.uid;
+//     final uid = _sharedNoteRepository.authController.user.value!.uid;
 
 //     // Create shared note in selected groups.
 //     final cleanedGroupType = groupType.toLowerCase().trim() == 'class'

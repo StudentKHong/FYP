@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:note_taking_app/Controller/auth_controller.dart';
 import 'package:note_taking_app/Controller/base_controller.dart';
 import 'package:note_taking_app/Controller/label_controller.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
@@ -16,6 +17,18 @@ class TaskController extends Controller<Task> {
   StreamSubscription<List<Task>>? _watchByGroupSubscription;
 
   TaskController() : super(repository: Get.find<TaskRepository>());
+
+  @override
+  void onInit() {
+    super.onInit();
+    final authController = Get.find<AuthenticationController>();
+    ever(authController.user, (user) {
+      if (user != null) {
+        _labelController.getTaskLabels();
+        getAll();
+      }
+    });
+  }
 
   @override
   void onClose() {
@@ -92,10 +105,23 @@ class TaskController extends Controller<Task> {
   Future<void> getAll() async {
     try {
       errorMessage.value = "";
+
+      _watchByLabelSubscription?.cancel();
+      watchAllSubscription?.cancel();
+
       // Fetch tasks.
-      watchAllSubscription = _taskRepository.watchAll().listen((notes) {
-        list.assignAll(notes);
-        filteredList.assignAll(notes);
+      final labels = _labelController.taskLabels;
+      watchAllSubscription = _taskRepository.watchAll().listen((tasks) {
+        final tasksWithLabels = tasks.map((task) {
+          final labelId = task.label?.id;
+          return labelId != null && labels.any((label) => label.id == labelId)
+              ? task.copyWith(
+                  label: labels.firstWhere((label) => label.id == labelId),
+                )
+              : task;
+        }).toList();
+        list.assignAll(tasksWithLabels);
+        filteredList.assignAll(tasksWithLabels);
       });
 
       // Refilter if current filter exists.
@@ -211,9 +237,7 @@ class TaskController extends Controller<Task> {
       );
 
       // Update reactive list and filteredList.
-      pushItemToTop(
-        entity: newEntity,
-      );
+      pushItemToTop(entity: newEntity);
     } catch (ex) {
       errorMessage.value = ex.toString();
     }
@@ -317,11 +341,24 @@ class TaskController extends Controller<Task> {
     watchAllSubscription?.cancel();
     watchAllSubscription = (repository as TaskRepository)
         .watchArchived()
-        .listen((tasks) {
-          filteredList.assignAll(tasks);
-        }, onError: (ex) {
-          errorMessage.value = ex.toString();
-        });
+        .listen(
+          (tasks) {
+            final labels = _labelController.taskLabels;
+            final tasksWithLabels = tasks.map((task) {
+              final labelId = task.label?.id;
+              return labelId != null &&
+                      labels.any((label) => label.id == labelId)
+                  ? task.copyWith(
+                      label: labels.firstWhere((label) => label.id == labelId),
+                    )
+                  : task;
+            }).toList();
+            filteredList.assignAll(tasksWithLabels);
+          },
+          onError: (ex) {
+            errorMessage.value = ex.toString();
+          },
+        );
   }
 
   @override

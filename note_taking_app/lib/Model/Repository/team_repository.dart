@@ -54,10 +54,10 @@ class TeamRepository extends BaseRepository<Team> {
     final classMember = TeamMember(
       id: UniqueKey().toString(),
       teamId: teamId,
-      userId: _authController.user!.uid,
+      userId: _authController.user.value!.uid,
       joinedAt: DateTime.now(),
       role: TeamMemberRole.convertUserTypeToMemberRole(
-        _authController.user!.userType ?? UserType.student,
+        _authController.user.value!.userType ?? UserType.student,
       ),
     );
     await classMemberCollection.add(classMember.toMap());
@@ -65,7 +65,7 @@ class TeamRepository extends BaseRepository<Team> {
 
   @override
   Stream<List<Team>> watchAll() {
-    final uid = _authController.user?.uid;
+    final uid = _authController.user.value?.uid;
     if (uid == null) return Stream.empty();
 
     // Gather all relevant class ids.
@@ -98,7 +98,7 @@ class TeamRepository extends BaseRepository<Team> {
 
   @override
   Stream<int> watchAllCount() {
-    final uid = _authController.user?.uid;
+    final uid = _authController.user.value?.uid;
     if (uid == null) return Stream.empty();
 
     return FirebaseFirestore.instance
@@ -123,7 +123,7 @@ class TeamRepository extends BaseRepository<Team> {
     final memberQuerySnapshot = await FirebaseFirestore.instance
         .collection('team_members')
         .where('teamId', isEqualTo: teamId)
-        .where('userId', isEqualTo: _authController.user?.uid)
+        .where('userId', isEqualTo: _authController.user.value?.uid)
         .limit(1)
         .get();
     if (memberQuerySnapshot.docs.isNotEmpty) {
@@ -146,7 +146,7 @@ class TeamRepository extends BaseRepository<Team> {
     // Remove user from a team.
     final querySnapshot = await FirebaseFirestore.instance
         .collection('team_members')
-        .where('userId', isEqualTo: _authController.user?.uid)
+        .where('userId', isEqualTo: _authController.user.value?.uid)
         .where('teamId', isEqualTo: teamId)
         .limit(1)
         .get();

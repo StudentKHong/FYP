@@ -318,7 +318,7 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                                 group.createdBy ==
                                     Get.find<AuthenticationController>()
                                         .user
-                                        ?.uid)
+                                        .value?.uid)
                             ? Mode.editShared
                             : Mode.view,
                         description:
@@ -381,7 +381,7 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                                 group.createdBy ==
                                     Get.find<AuthenticationController>()
                                         .user
-                                        ?.uid)
+                                        .value?.uid)
                             ? Mode.editShared
                             : Mode.view,
                         description:

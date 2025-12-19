@@ -48,7 +48,7 @@ class ClassRepository extends BaseRepository<Class> {
 
   @override
   Stream<List<Class>> watchAll() {
-    final uid = _authController.user?.uid;
+    final uid = _authController.user.value?.uid;
     if (uid == null) return Stream.empty();
 
     // Gather all relevant class ids.
@@ -81,7 +81,7 @@ class ClassRepository extends BaseRepository<Class> {
 
   @override
   Stream<int> watchAllCount() {
-    final uid = _authController.user?.uid;
+    final uid = _authController.user.value?.uid;
     if (uid == null) return Stream.empty();
 
     return FirebaseFirestore.instance
@@ -106,7 +106,7 @@ class ClassRepository extends BaseRepository<Class> {
     final memberQuerySnapshot = await FirebaseFirestore.instance
         .collection('class_members')
         .where('classId', isEqualTo: classId)
-        .where('userId', isEqualTo: _authController.user?.uid)
+        .where('userId', isEqualTo: _authController.user.value?.uid)
         .limit(1)
         .get();
     if (memberQuerySnapshot.docs.isNotEmpty) {
@@ -141,10 +141,10 @@ class ClassRepository extends BaseRepository<Class> {
     final classMember = ClassMember(
       id: UniqueKey().toString(),
       classId: classId,
-      userId: _authController.user!.uid,
+      userId: _authController.user.value!.uid,
       joinedAt: DateTime.now(),
       role: ClassMemberRole.convertUserTypeToMemberRole(
-        _authController.user!.userType ?? UserType.student,
+        _authController.user.value!.userType ?? UserType.student,
       ),
     );
     await classMemberCollection.add(classMember.toMap());
@@ -154,7 +154,7 @@ class ClassRepository extends BaseRepository<Class> {
     // Remove user from a class.
     final querySnapshot = await FirebaseFirestore.instance
         .collection('class_members')
-        .where('userId', isEqualTo: _authController.user?.uid)
+        .where('userId', isEqualTo: _authController.user.value?.uid)
         .where('classId', isEqualTo: classId)
         .limit(1)
         .get();

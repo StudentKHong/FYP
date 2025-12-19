@@ -149,7 +149,7 @@ abstract class UserRepository<T extends BaseEntity> extends BaseRepository<T> {
 
   @override
   CollectionReference get collection {
-    final uid = authController.user?.uid;
+    final uid = authController.user.value?.uid;
 
     if (uid == null || uid.isEmpty) {
       throw Exception('Please login again to continue.');

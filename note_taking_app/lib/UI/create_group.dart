@@ -35,7 +35,7 @@ class CreateGroupScreen extends StatelessWidget {
     final TextEditingController groupNameController = TextEditingController();
     final TextEditingController groupLeadController = TextEditingController(
       text:
-          "${authController.user?.name ?? "Unspecified Name"} (${authController.user?.uid})",
+          "${authController.user.value?.name ?? "Unspecified Name"} (${authController.user.value?.uid})",
     );
     final TextEditingController descriptionController = TextEditingController();
 
@@ -94,7 +94,7 @@ class CreateGroupScreen extends StatelessWidget {
                               code: UniqueKey().toString(),
                               name: groupNameController.text.trim(),
                               description: descriptionController.text.trim(),
-                              createdBy: authController.user?.uid,
+                              createdBy: authController.user.value?.uid,
                               createdAt: DateTime.now(),
                               total: 1,
                               totalStudents: 0,
@@ -118,7 +118,7 @@ class CreateGroupScreen extends StatelessWidget {
                               code: UniqueKey().toString(),
                               name: groupNameController.text.trim(),
                               description: descriptionController.text.trim(),
-                              createdBy: authController.user?.uid,
+                              createdBy: authController.user.value?.uid,
                               createdAt: DateTime.now(),
                               total: 1,
                             );
@@ -138,7 +138,7 @@ class CreateGroupScreen extends StatelessWidget {
                           Get.off(
                             CodeScreen(
                               groupLeadName:
-                                  authController.user?.name ??
+                                  authController.user.value?.name ??
                                   "Unspecified Name",
                               groupObject: groupData,
                             ),

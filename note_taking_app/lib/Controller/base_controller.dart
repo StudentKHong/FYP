@@ -43,16 +43,18 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
 
   // To ensure updated or created item is always on top of the list.
   @protected
-  void pushItemToTop({required T entity}) {
+  void pushItemToTop({required T entity, bool forList = true, bool forFilteredList = true}) {
     final othersInList = list.where((item) => item.id != entity.id);
     final newList = [entity, ...othersInList];
-    list.value = newList;
+    list.assignAll(newList);
+    list.refresh();
 
     final othersInFilteredList = filteredList.where(
       (item) => item.id != entity.id,
     );
     final newFilteredList = [entity, ...othersInFilteredList];
-    filteredList.value = newFilteredList;
+    filteredList.assignAll(newFilteredList);
+    filteredList.refresh();
   }
 
   ComponentFilter<T>? createFilter();
@@ -197,8 +199,30 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
 
       // Update reactive list and filteredList.
       for (final updatedEntity in newEntities) {
-        if (pushToTop) {
-          pushItemToTop(entity: updatedEntity);
+        final index = list.indexWhere((item) => item.id == updatedEntity.id);
+        if (index != -1) {
+          list.removeAt(index);
+          if (pushToTop) {
+            pushItemToTop(entity: updatedEntity);
+          }
+        }
+
+        final filteredIndex = filteredList.indexWhere(
+          (item) => item.id == updatedEntity.id,
+        );
+        if (filteredIndex != -1) {
+          if (currentFilter.value == null || currentFilter.value!.isEmpty) {
+            filteredList.removeAt(filteredIndex);
+          } else {
+            final filter = currentFilter.value!;
+
+            if (filter.baseFilter(updatedEntity)) {
+              filteredList.removeAt(filteredIndex);
+            }
+          }
+          if (pushToTop) {
+            pushItemToTop(entity: updatedEntity);
+          }
         }
       }
     } catch (e) {

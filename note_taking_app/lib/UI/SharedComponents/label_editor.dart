@@ -4,21 +4,32 @@ import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/label_controller.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
+import 'package:note_taking_app/UI/SharedComponents/search.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
+import 'package:note_taking_app/UI/SharedComponents/toggle_button.dart';
 
 class CustomLabelEditor extends StatefulWidget {
   final Label? initialLabel;
-  final ComponentType? type;
+  final ComponentType type;
   final LabelController labelController;
   final ValueChanged<Label>? onTagsChanged;
   final bool isReadOnly;
+
+  // Parameters for auto-generation labels.
+  final bool withGenerateLabelSwitch;
+  final bool initialSwitchState;
+  final String? contentToSuggestLabel;
+
   const CustomLabelEditor({
     super.key,
     this.initialLabel,
-    this.type,
+    required this.type,
     required this.labelController,
     this.onTagsChanged,
     this.isReadOnly = false,
+    required this.withGenerateLabelSwitch,
+    this.initialSwitchState = false,
+    this.contentToSuggestLabel,
   });
 
   @override
@@ -26,9 +37,11 @@ class CustomLabelEditor extends StatefulWidget {
 }
 
 class _CustomLabelEditorState extends State<CustomLabelEditor> {
-  late TextEditingController textController;
+  // late TextEditingController textController;
+  final TextEditingController _searchController = TextEditingController();
   late Label? selectedLabel;
-  bool isProgrammaticallyChanged = false;
+  // bool isProgrammaticallyChanged = false;
+  late bool generateLabelEnabled;
 
   @override
   void initState() {
@@ -36,8 +49,9 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
 
     print("Initial label: ${widget.initialLabel}");
     selectedLabel = widget.initialLabel;
+    generateLabelEnabled = widget.initialSwitchState;
     print("Selected label: $selectedLabel");
-    textController = TextEditingController(text: selectedLabel?.name);
+    // textController = TextEditingController(text: selectedLabel?.name);
     _loadLabels();
   }
 
@@ -53,186 +67,346 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
     }
   }
 
+  Widget _buildBottomSheet({
+    required List<Label> existing,
+    required List<Label> suggested,
+    required VoidCallback onSearch,
+    required void Function(void Function()) modalSetState
+  }) {
+    final query = _searchController.text.toLowerCase();
+    final filteredExisting = existing
+        .where((label) => label.name.toLowerCase().contains(query))
+        .toList();
+    final filteredSuggestion = suggested
+        .where(
+          (label) =>
+              label.name.toLowerCase().contains(query) &&
+              !existing.any((existing) => existing.name == label.name),
+        )
+        .toList();
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.5,
+      minChildSize: 0.5,
+      maxChildSize: 0.5,
+      builder: (context, scrollController) {
+        return Padding(
+          padding: EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (widget.withGenerateLabelSwitch) _buildGenerateLabelSwitch(modalSetState: modalSetState),
+              Divider(),
+              CustomSearchBar(
+                searchController: _searchController,
+                onSearch: (_) => onSearch(),
+              ),
+              const SizedBox(height: 10),
+              ..._buildSection(
+                title: "Existing Labels",
+                list: filteredExisting,
+                chipAvatar: Icon(Icons.label, color: Colors.black),
+                chipColor: Colors.green.shade300,
+              ),
+              const SizedBox(height: 10),
+              ..._buildSection(
+                title: "Suggested Labels",
+                list: filteredSuggestion,
+                chipAvatar: Icon(Icons.auto_awesome, color: Colors.black),
+                chipColor: Colors.blue.shade300,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  List<Widget> _buildSection({
+    required String title,
+    required List<Label> list,
+    required Widget chipAvatar,
+    required Color chipColor,
+  }) {
+    return [
+      if (list.isNotEmpty)
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.bold),
+        ),
+      const SizedBox(height: 5),
+      Wrap(
+        children: list
+            .map(
+              (label) => ActionChip(
+                avatar: chipAvatar,
+                label: Text(
+                  label.name,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall!.copyWith(color: Colors.black),
+                ),
+                backgroundColor: chipColor,
+                onPressed: () {
+                  setState(() {
+                    selectedLabel = label;
+                  });
+                  widget.onTagsChanged?.call(label);
+                  Navigator.pop(context);
+                },
+              ),
+            )
+            .toList(),
+      ),
+    ];
+  }
+
+  Widget _buildGenerateLabelSwitch({required void Function(void Function()) modalSetState}) {
+    final labelController = widget.labelController;
+    final contentForLabelGeneration = widget.contentToSuggestLabel ?? "";
+
+    return CustomSwitch(
+      title: 'Generate Label',
+      infoDescription:
+          "Generate label using Artificial Intelligence (AI). Do not enable this if note contains personal information.",
+      isTitleLeading: true,
+      switchSize: Scale.medium,
+      isToggled: generateLabelEnabled,
+      onChanged: (value) async {
+        // Update UI to display the suggested label.
+        modalSetState(() {
+          generateLabelEnabled = value;
+        });
+
+        // Generate label through controller.
+        await labelController.generateLabel(
+          widget.type,
+          contentForLabelGeneration,
+        );
+        if (labelController.errorMessage.value.isNotEmpty) {
+          CustomDialog.showError("Error", labelController.errorMessage.value);
+
+          modalSetState(() {
+            generateLabelEnabled = false;
+          });
+        } else {
+          CustomDialog.showSuccess("Info", "Label generated.");
+          modalSetState(() {});
+        }
+      },
+      layout: LayoutMode.listTile,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Display static text field when is read only.
-    if (widget.isReadOnly) {
-      return TextField(
-        controller: textController,
-        readOnly: widget.isReadOnly,
-        decoration: InputDecoration(
-          labelText: "Label",
-          border: const OutlineInputBorder(),
-          suffixIcon: widget.isReadOnly ? Icon(Icons.lock) : null,
+    final labelController = widget.labelController;
+    final existingLabels = widget.type == ComponentType.note
+        ? labelController.noteLabels
+        : labelController.taskLabels;
+    final newSuggestions = labelController.suggestedLabels;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Label', style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: 10),
+        ListTile(
+          tileColor: Colors.grey,
+          leading: Icon(Icons.label_outline),
+          title: Text(
+            selectedLabel?.name ?? "(None)",
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          trailing: Icon(Icons.edit),
+          onTap: () => widget.isReadOnly
+              ? null
+              : showModalBottomSheet(
+                  isScrollControlled: true,
+                  context: context,
+                  builder: (_) => StatefulBuilder(
+                    builder: (context, setState) {
+                      return _buildBottomSheet(
+                        existing: existingLabels,
+                        suggested: newSuggestions,
+                        onSearch: () => setState(() {}),
+                        modalSetState: setState
+                      );
+                    },
+                  ),
+                ),
         ),
-      );
-    }
-
-    // Display label editor if is not read only.
-    return SizedBox(
-      width: double.infinity,
-      child: Obx(() {
-        // Gather label lists.
-        final labelController = widget.labelController;
-        final existingLabels = widget.type == ComponentType.note
-            ? labelController.noteLabels
-            : labelController.taskLabels;
-
-        final newSuggestions = labelController.suggestedLabels;
-        print(
-          "Suggested labels: ${labelController.suggestedLabels.map((label) => label.name)}",
-        );
-
-        return TypeAheadField<Label>(
-          controller: textController,
-          builder: (context, controller, focusNode) {
-            if (selectedLabel != null && controller.text.isEmpty) {
-              controller.text = selectedLabel!.name;
-            }
-
-            return TextField(
-              controller: controller,
-              focusNode: focusNode,
-              decoration: InputDecoration(
-                labelText: "Label",
-                border: const OutlineInputBorder(),
-              ),
-            );
-          },
-          emptyBuilder: (context) {
-            final labelName = textController.text.trim();
-
-            final existingLabels =
-                (widget.type == ComponentType.note
-                        ? labelController.noteLabels
-                        : labelController.taskLabels)
-                    .toList();
-            final newSuggestions = labelController.suggestedLabels.toList();
-
-            final allLabels = [...existingLabels, ...newSuggestions];
-            final isExisting = allLabels.any(
-              (label) =>
-                  label.name.toLowerCase().contains(labelName.toLowerCase()),
-            );
-            // print(labelName.isEmpty);
-            if (labelName.isEmpty || isExisting) {
-              return const SizedBox.shrink();
-            }
-
-            final tempLabel = Label(
-              id: UniqueKey().toString(),
-              name: labelName,
-              type: widget.type,
-              count: 0,
-            );
-            return ListTile(
-              leading: const Icon(Icons.new_label_outlined),
-              title: Text("Create ${tempLabel.name}"),
-              tileColor: Colors.yellow,
-              contentPadding: EdgeInsets.zero,
-              onTap: () async {
-                final newLabel = await labelController.create(tempLabel);
-                if (labelController.errorMessage.value.isNotEmpty) {
-                  CustomDialog.showError(
-                    "Error",
-                    labelController.errorMessage.value,
-                  );
-                  return;
-                }
-                setState(() {
-                  selectedLabel = newLabel;
-                  textController.text = newLabel!.name;
-                });
-
-                widget.onTagsChanged?.call(newLabel!);
-              },
-            );
-          },
-          itemBuilder: (context, value) {
-            final newSuggestions = labelController.suggestedLabels;
-
-            bool isNewSuggestion =
-                newSuggestions.toList().any(
-                  (label) => label.name == value.name,
-                ) &&
-                !existingLabels.toList().any(
-                  (label) => label.name == value.name,
-                );
-
-            Color labelColor = isNewSuggestion ? Colors.blue : Colors.green;
-            Icon icon = isNewSuggestion
-                ? const Icon(Icons.new_label_outlined)
-                : const Icon(Icons.label);
-
-            return ListTile(
-              tileColor: labelColor,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 5,
-              ),
-              leading: icon,
-              title: Text(
-                isNewSuggestion ? "AI Suggestion: ${value.name}" : value.name,
-              ),
-            );
-          },
-          onSelected: (suggestion) async {
-            isProgrammaticallyChanged = true;
-            textController.text = suggestion.name;
-            isProgrammaticallyChanged = false;
-
-            setState(() {
-              selectedLabel = existingLabels.toList().firstWhere(
-                (label) => label.name == suggestion.name,
-                orElse: () => suggestion,
-              );
-            });
-
-            if (!existingLabels.toList().any(
-              (label) => label.name == suggestion.name,
-            )) {
-              selectedLabel = await labelController.create(suggestion);
-            } else {
-              selectedLabel = suggestion;
-            }
-            widget.onTagsChanged?.call(selectedLabel!);
-
-            if (mounted) {
-              Future.delayed(Duration(milliseconds: 10), () {
-                if (mounted) FocusScope.of(context).unfocus();
-              });
-            }
-          },
-          suggestionsCallback: (suggestion) {
-            if (suggestion.isEmpty) {
-              return [];
-            }
-            final lowerSuggestion = suggestion.toLowerCase();
-
-            final existingMatches = existingLabels
-                .toList()
-                .where(
-                  (label) => label.name.toLowerCase().contains(lowerSuggestion),
-                )
-                .toList();
-
-            final aiMatches = newSuggestions
-                .where(
-                  (label) =>
-                      label.name.toLowerCase().contains(lowerSuggestion) &&
-                      !existingMatches.any(
-                        (existing) =>
-                            existing.name.toLowerCase() ==
-                            label.name.toLowerCase(),
-                      ),
-                )
-                .toList();
-
-            return [...existingMatches, ...aiMatches];
-          },
-        );
-      }),
+      ],
     );
+
+    // // Display label editor if is not read only.
+    // return SizedBox(
+    //   width: double.infinity,
+    //   child: Obx(() {
+    //     // Gather label lists.
+    //     final labelController = widget.labelController;
+    //     final existingLabels = widget.type == ComponentType.note
+    //         ? labelController.noteLabels
+    //         : labelController.taskLabels;
+
+    //     final newSuggestions = labelController.suggestedLabels;
+    //     print(
+    //       "Suggested labels: ${labelController.suggestedLabels.map((label) => label.name)}",
+    //     );
+
+    //     return TypeAheadField<Label>(
+    //       controller: textController,
+    //       builder: (context, controller, focusNode) {
+    //         if (selectedLabel != null && controller.text.isEmpty) {
+    //           controller.text = selectedLabel!.name;
+    //         }
+
+    //         return TextField(
+    //           controller: controller,
+    //           focusNode: focusNode,
+    //           decoration: InputDecoration(
+    //             labelText: "Label",
+    //             border: const OutlineInputBorder(),
+    //           ),
+    //         );
+    //       },
+    //       emptyBuilder: (context) {
+    //         final labelName = textController.text.trim();
+
+    //         final existingLabels =
+    //             (widget.type == ComponentType.note
+    //                     ? labelController.noteLabels
+    //                     : labelController.taskLabels)
+    //                 .toList();
+    //         final newSuggestions = labelController.suggestedLabels.toList();
+
+    //         final allLabels = [...existingLabels, ...newSuggestions];
+    //         final isExisting = allLabels.any(
+    //           (label) =>
+    //               label.name.toLowerCase().contains(labelName.toLowerCase()),
+    //         );
+    //         // print(labelName.isEmpty);
+    //         if (labelName.isEmpty || isExisting) {
+    //           return const SizedBox.shrink();
+    //         }
+
+    //         final tempLabel = Label(
+    //           id: UniqueKey().toString(),
+    //           name: labelName,
+    //           type: widget.type,
+    //           count: 0,
+    //         );
+    //         return ListTile(
+    //           leading: const Icon(Icons.new_label_outlined),
+    //           title: Text("Create ${tempLabel.name}"),
+    //           tileColor: Colors.yellow,
+    //           contentPadding: EdgeInsets.zero,
+    //           onTap: () async {
+    //             final newLabel = await labelController.create(tempLabel);
+    //             if (labelController.errorMessage.value.isNotEmpty) {
+    //               CustomDialog.showError(
+    //                 "Error",
+    //                 labelController.errorMessage.value,
+    //               );
+    //               return;
+    //             }
+    //             setState(() {
+    //               selectedLabel = newLabel;
+    //               textController.text = newLabel!.name;
+    //             });
+
+    //             widget.onTagsChanged?.call(newLabel!);
+    //           },
+    //         );
+    //       },
+    //       itemBuilder: (context, value) {
+    //         final newSuggestions = labelController.suggestedLabels;
+
+    //         bool isNewSuggestion =
+    //             newSuggestions.toList().any(
+    //               (label) => label.name == value.name,
+    //             ) &&
+    //             !existingLabels.toList().any(
+    //               (label) => label.name == value.name,
+    //             );
+
+    //         Color labelColor = isNewSuggestion ? Colors.blue : Colors.green;
+    //         Icon icon = isNewSuggestion
+    //             ? const Icon(Icons.new_label_outlined)
+    //             : const Icon(Icons.label);
+
+    //         return ListTile(
+    //           tileColor: labelColor,
+    //           contentPadding: const EdgeInsets.symmetric(
+    //             horizontal: 10,
+    //             vertical: 5,
+    //           ),
+    //           leading: icon,
+    //           title: Text(
+    //             isNewSuggestion ? "AI Suggestion: ${value.name}" : value.name,
+    //           ),
+    //         );
+    //       },
+    //       onSelected: (suggestion) async {
+    //         isProgrammaticallyChanged = true;
+    //         textController.text = suggestion.name;
+    //         isProgrammaticallyChanged = false;
+
+    //         setState(() {
+    //           selectedLabel = existingLabels.toList().firstWhere(
+    //             (label) => label.name == suggestion.name,
+    //             orElse: () => suggestion,
+    //           );
+    //         });
+
+    //         if (!existingLabels.toList().any(
+    //           (label) => label.name == suggestion.name,
+    //         )) {
+    //           selectedLabel = await labelController.create(suggestion);
+    //         } else {
+    //           selectedLabel = suggestion;
+    //         }
+    //         widget.onTagsChanged?.call(selectedLabel!);
+
+    //         if (mounted) {
+    //           Future.delayed(Duration(milliseconds: 10), () {
+    //             if (mounted) FocusScope.of(context).unfocus();
+    //           });
+    //         }
+    //       },
+    //       suggestionsCallback: (suggestion) {
+    //         if (suggestion.isEmpty) {
+    //           return [];
+    //         }
+    //         final lowerSuggestion = suggestion.toLowerCase();
+
+    //         final existingMatches = existingLabels
+    //             .toList()
+    //             .where(
+    //               (label) => label.name.toLowerCase().contains(lowerSuggestion),
+    //             )
+    //             .toList();
+
+    //         final aiMatches = newSuggestions
+    //             .where(
+    //               (label) =>
+    //                   label.name.toLowerCase().contains(lowerSuggestion) &&
+    //                   !existingMatches.any(
+    //                     (existing) =>
+    //                         existing.name.toLowerCase() ==
+    //                         label.name.toLowerCase(),
+    //                   ),
+    //             )
+    //             .toList();
+
+    //         return [...existingMatches, ...aiMatches];
+    //       },
+    //     );
+    //   }),
+    // );
 
     // return Opacity(
     //   opacity: widget.isReadOnly ? 0.6 : 1.0,

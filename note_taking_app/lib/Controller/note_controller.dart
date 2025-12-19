@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:get/get.dart';
+import 'package:note_taking_app/Controller/auth_controller.dart';
 import 'package:note_taking_app/Controller/base_controller.dart';
 import 'package:note_taking_app/Controller/label_controller.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
@@ -11,6 +12,7 @@ class NoteController extends Controller<Note> {
   final NoteRepository _noteRepository;
   final LabelController _labelController;
 
+  StreamSubscription<List<Label>>? _watchLabelSubscription;
   StreamSubscription<List<Note>>? _watchByLabelSubscription;
   StreamSubscription<List<Note>>? _watchByGroupSubscription;
 
@@ -22,7 +24,20 @@ class NoteController extends Controller<Note> {
       super(repository: Get.find<NoteRepository>());
 
   @override
+  void onInit() {
+    super.onInit();
+    final authController = Get.find<AuthenticationController>();
+    ever(authController.user, (user) {
+      if (user != null) {
+        _labelController.getNoteLabels();
+        getAll();
+      }
+    });
+  }
+
+  @override
   void onClose() {
+    _watchLabelSubscription?.cancel();
     _watchByLabelSubscription?.cancel();
     _watchByGroupSubscription?.cancel();
     super.onClose();
@@ -100,9 +115,20 @@ class NoteController extends Controller<Note> {
       _watchByLabelSubscription?.cancel();
       activeLabelId.value = '';
       watchAllSubscription?.cancel();
+
+      final labels = _labelController.noteLabels;
       watchAllSubscription = _noteRepository.watchAll().listen((notes) {
-        list.assignAll(notes);
-        filteredList.assignAll(notes);
+        final notesWithLabels = notes.map((note) {
+          final labelId = note.label?.id;
+          return labelId != null && labels.any((label) => label.id == labelId)
+              ? note.copyWith(
+                  label: labels.firstWhere((label) => label.id == labelId),
+                )
+              : note;
+        }).toList();
+
+        list.assignAll(notesWithLabels);
+        filteredList.assignAll(notesWithLabels);
       });
 
       // Refilter if current filter exists.
@@ -169,17 +195,6 @@ class NoteController extends Controller<Note> {
       return size;
     } catch (ex) {
       errorMessage.value = "Something went wrong";
-      return null;
-    }
-  }
-
-  Future<Label?> getLabel(String labelId) async {
-    try {
-      errorMessage.value = "";
-      _labelController.getById(labelId);
-      return _labelController.content.value;
-    } catch (ex) {
-      errorMessage.value = ex.toString();
       return null;
     }
   }
@@ -272,16 +287,17 @@ class NoteController extends Controller<Note> {
 
       // Set label.
       await _noteRepository.setLabel(labelId, noteIds);
+      _labelController.getById(labelId);
 
       // Update lists with the latest label.
       for (var note in list) {
         if (noteIds.contains(note.id)) {
-          note = note.copyWith(label: await getLabel(labelId));
+          note = note.copyWith(label: _labelController.content.value);
         }
       }
       for (var note in filteredList) {
         if (noteIds.contains(note.id)) {
-          note = note.copyWith(label: await getLabel(labelId));
+          note = note.copyWith(label: _labelController.content.value);
         }
       }
 
@@ -316,11 +332,25 @@ class NoteController extends Controller<Note> {
     watchAllSubscription?.cancel();
     watchAllSubscription = (repository as NoteRepository)
         .watchArchived()
-        .listen((notes) {
-          filteredList.assignAll(notes);
-        }, onError: (ex) {
-          errorMessage.value = ex.toString();
-        });
+        .listen(
+          (notes) {
+            final labels = _labelController.noteLabels;
+            final notesWithLabels = notes.map((note) {
+              final labelId = note.label?.id;
+              return labelId != null &&
+                      labels.any((label) => label.id == labelId)
+                  ? note.copyWith(
+                      label: labels.firstWhere((label) => label.id == labelId),
+                    )
+                  : note;
+            }).toList();
+
+            filteredList.assignAll(notesWithLabels);
+          },
+          onError: (ex) {
+            errorMessage.value = ex.toString();
+          },
+        );
   }
 
   @override

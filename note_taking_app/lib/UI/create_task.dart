@@ -12,6 +12,7 @@ import 'package:note_taking_app/Model/Models/label_model.dart';
 import 'package:note_taking_app/Model/Models/notification_model.dart';
 import 'package:note_taking_app/Model/Models/task_model.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
+import 'package:note_taking_app/UI/SharedComponents/info_button.dart';
 import 'package:note_taking_app/UI/SharedComponents/label_editor.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/SharedComponents/text_box.dart';
@@ -52,10 +53,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   late final String title;
   final options = NotificationController.options;
   bool toggleEnabled = false;
+  bool notificationsEnabled = true;
   bool hasChanged = false;
 
   late Task? original;
   Task? task;
+  String? initialReminder;
   DateTime? startDateTime;
   DateTime? endDateTime;
   Status? status;
@@ -96,6 +99,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     _loadLabels();
 
     // Load the initial state of the auto generate label toggle button.
+    // Load initial selected reminder option.
     _loadCurrentSettings();
 
     // Assign page title based on mode.
@@ -117,13 +121,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
     titleController.text = task?.name ?? '';
     descriptionController.text = task?.description ?? '';
-    selectedLabel = task?.label;
+    selectedLabel = widget.initialLabel ?? task?.label;
 
     startDateTime = task?.startDateTime;
     endDateTime = task?.endDateTime;
     reminderDateTime = task?.reminderDateTime;
-    print("Reminder date time is null: ${reminderDateTime == null}");
-    selectedReminder = _getInitialReminderOption(task?.reminderDateTime);
+
     status = task?.status ?? Status.unknown;
 
     _listenToContentChanges();
@@ -148,8 +151,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         endDateTime != original?.endDateTime ||
         status != (original?.status ?? Status.unknown) ||
         selectedLabel != original?.label ||
-        selectedReminder !=
-            _getInitialReminderOption(original?.reminderDateTime);
+        selectedReminder != initialReminder;
   }
 
   // Add listener to controllers.
@@ -159,11 +161,32 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   void _loadCurrentSettings() async {
+    if (widget.mode == Mode.edit) {
+      initialReminder = _getInitialReminderOption(
+        reminder: task?.reminderDateTime,
+      );
+      selectedReminder = _getInitialReminderOption(
+        reminder: task?.reminderDateTime,
+      );
+      return;
+    }
+
     await settingController.get();
     final settings = settingController.currentSettings.value;
 
     if (settings != null) {
-      toggleEnabled = settings.autoLabelingEnabled;
+      setState(() {
+        toggleEnabled = settings.autoLabelingEnabled;
+        notificationsEnabled = settings.notificationsEnabled;
+        initialReminder = _getInitialReminderOption(
+          reminderFrom: settings.offsetFrom,
+          reminderOffset: settings.reminderOffset,
+        );
+        selectedReminder = _getInitialReminderOption(
+          reminderFrom: settings.offsetFrom,
+          reminderOffset: settings.reminderOffset,
+        );
+      });
     }
   }
 
@@ -213,9 +236,22 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     return null;
   }
 
-  String? _getInitialReminderOption(DateTime? reminder) {
+  String? _getInitialReminderOption({
+    DateTime? reminder,
+    String? reminderFrom,
+    int? reminderOffset,
+  }) {
     if (reminder == null) {
       return 'None';
+    }
+
+    if (reminderFrom != null && reminderOffset != null) {
+      return options.keys.firstWhere(
+        (key) =>
+            key.contains(reminderFrom) &&
+            key.contains(reminderOffset.toString()),
+        orElse: () => 'None',
+      );
     }
 
     final start = task?.startDateTime;
@@ -529,50 +565,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             });
                           }
                         },
+                        withGenerateLabelSwitch: widget.mode != Mode.view
+                            ? true
+                            : false,
+                        contentToSuggestLabel: descriptionController.text,
+                        initialSwitchState: toggleEnabled,
                       ),
                     ),
-
-                    // Display switch to toggle generating label.
-                    // Hide this if is view mode.
-                    if (widget.mode != Mode.view) ...[
-                      const SizedBox(width: 10),
-                      CustomSwitch(
-                        title: 'Generate Label',
-                        infoDescription:
-                            "Generate label using Artificial Intelligence (AI). Do not enable this if note contains personal information.",
-                        isTitleLeading: false,
-                        switchSize: Scale.small,
-                        isToggled: toggleEnabled,
-                        onChanged: (value) async {
-                          // Update UI to display the suggested label.
-                          setState(() {
-                            toggleEnabled = value;
-                          });
-
-                          // Generate label through controller.
-                          await labelController.generateLabel(
-                            ComponentType.task,
-                            descriptionController.text,
-                          );
-
-                          if (labelController.errorMessage.value.isNotEmpty) {
-                            CustomDialog.showError(
-                              "Error",
-                              labelController.errorMessage.value,
-                            );
-
-                            setState(() {
-                              toggleEnabled = false;
-                            });
-                          } else {
-                            CustomDialog.showSuccess(
-                              "Info",
-                              "Label generated.",
-                            );
-                          }
-                        },
-                      ),
-                    ],
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -684,42 +683,49 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   Row(
                     children: [
                       Icon(Icons.notifications),
-                      Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Text(
-                          'Reminder:',
-                          style: Theme.of(context).textTheme.bodyMedium,
+                      Text(
+                        'Reminder:',
+                        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                          color: notificationsEnabled
+                              ? null
+                              : Colors.grey.shade400,
                         ),
                       ),
                       const SizedBox(width: 10),
                       DropdownButton<String>(
                         value: selectedReminder ?? 'None',
                         items: _getReminderOptions(),
-                        onChanged: (value) {
-                          if (value == null) return;
-                          // final duration = options[value.toString()];
-                          setState(() {
-                            selectedReminder = value;
-                            hasChanged = true;
-                            _recalculateReminderDateTime(selectedReminder);
-                            // if (duration != null) {
-                            //   if (startDateTime != null &&
-                            //       value.toString().contains('start')) {
-                            //     reminderDateTime = startDateTime!.subtract(
-                            //       duration,
-                            //     );
-                            //   } else if (endDateTime != null &&
-                            //       value.toString().contains('end')) {
-                            //     reminderDateTime = endDateTime!.subtract(
-                            //       duration,
-                            //     );
-                            //   }
-                            // } else {
-                            //   reminderDateTime = null;
-                            // }
-                          });
-                        },
+                        onChanged: notificationsEnabled
+                            ? (value) {
+                                if (value == null) return;
+                                setState(() {
+                                  selectedReminder = value;
+                                  hasChanged = true;
+                                  _recalculateReminderDateTime(
+                                    selectedReminder,
+                                  );
+                                });
+                              }
+                            : null,
+                        disabledHint: notificationsEnabled
+                            ? null
+                            : Text(
+                                selectedReminder ?? 'None',
+                                style: Theme.of(context).textTheme.bodyMedium!
+                                    .copyWith(color: Colors.grey.shade400),
+                              ),
                       ),
+                      if (!notificationsEnabled)
+                        CustomInfoButton(
+                          color: Colors.red,
+                          infoDetails: [
+                            Info(
+                              text:
+                                  "You have disabled push notifications. Please enabled it in Settings.",
+                              maxLines: 2,
+                            ),
+                          ],
+                        ),
                     ],
                   ),
 

@@ -24,10 +24,10 @@ class RoleController {
   bool hasPermission(PermissionType feature){
     final userType = _permission[feature];
     if (userType == null) return false;
-    return userType.contains(_authController.user!.userType);
+    return userType.contains(_authController.user.value?.userType);
   }
 
   UserType? getUserRole(){
-    return _authController.user?.userType;
+    return _authController.user.value?.userType;
   }
 }

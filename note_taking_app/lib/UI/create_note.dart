@@ -23,7 +23,6 @@ import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
 import 'package:note_taking_app/UI/SharedComponents/label_editor.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/SharedComponents/text_box.dart';
-import 'package:note_taking_app/UI/SharedComponents/toggle_button.dart';
 import 'package:note_taking_app/UI/attachment.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:signature/signature.dart';
@@ -126,7 +125,9 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
 
     // Set text field and quill controllers.
     titleController.text = original?.title ?? '';
-    previousDocumentDelta = Delta.fromJson(jsonDecode(original?.content ?? ""));
+    if (original?.content != null) {
+      previousDocumentDelta = Delta.fromJson(jsonDecode(original!.content!));
+    }
     quillFocusNode = FocusNode(canRequestFocus: widget.mode != Mode.view);
 
     // Load data.
@@ -276,18 +277,18 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
       });
 
       // Update suggested labels if auto-generate is enabled.
-      if (toggleEnabled) {
-        generateLabelDebounceTimer?.cancel();
-        generateLabelDebounceTimer = Timer(
-          const Duration(milliseconds: 500),
-          () async {
-            await labelController.generateLabel(
-              ComponentType.note,
-              contentController.document.toPlainText(),
-            );
-          },
-        );
-      }
+      // if (toggleEnabled) {
+      //   generateLabelDebounceTimer?.cancel();
+      //   generateLabelDebounceTimer = Timer(
+      //     const Duration(milliseconds: 500),
+      //     () async {
+      //       await labelController.generateLabel(
+      //         ComponentType.note,
+      //         contentController.document.toPlainText(),
+      //       );
+      //     },
+      //   );
+      // }
     });
   }
 
@@ -296,7 +297,9 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
     final settings = settingController.currentSettings.value;
 
     if (settings != null) {
-      toggleEnabled = settings.autoLabelingEnabled;
+      setState(() {
+        toggleEnabled = settings.autoLabelingEnabled;
+      });
     }
   }
 
@@ -470,7 +473,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
         }
         if (widget.mode == Mode.edit && !hasChanged) {
           final viewedNote = note!.copyWith(isViewed: true);
-          await noteController.edit([viewedNote]);
+          noteController.edit([viewedNote]);
           if (noteController.errorMessage.value.isNotEmpty) {
             CustomDialog.showError("Error", noteController.errorMessage.value);
           }
@@ -546,56 +549,26 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                 });
                               }
                             },
+                            withGenerateLabelSwitch: widget.mode != Mode.view
+                                ? true
+                                : false,
+                            contentToSuggestLabel: contentController.document
+                                .toPlainText(),
+                            initialSwitchState: toggleEnabled,
                           ),
                         ),
                       ),
-                      if (widget.mode != Mode.view) ...[
-                        CustomSwitch(
-                          title: 'Generate Label',
-                          infoDescription:
-                              "Generate label using Artificial Intelligence (AI). Do not enable this if note contains personal information.",
-                          isTitleLeading: false,
-                          switchSize: Scale.small,
-                          isToggled: toggleEnabled,
-                          onChanged: (value) async {
-                            // Update UI to display the suggested label.
-                            setState(() {
-                              toggleEnabled = value;
-                            });
-
-                            // Generate label through controller.
-                            await labelController.generateLabel(
-                              ComponentType.note,
-                              contentController.document.toPlainText(),
-                            );
-                            if (labelController.errorMessage.value.isNotEmpty) {
-                              CustomDialog.showError(
-                                "Error",
-                                labelController.errorMessage.value,
-                              );
-
-                              setState(() {
-                                toggleEnabled = false;
-                              });
-                            } else {
-                              CustomDialog.showSuccess(
-                                "Info",
-                                "Label generated.",
-                              );
-                            }
-                          },
-                        ),
-                        if (!widget.hideAttachmentButton)
-                          Obx(() {
-                            final isOnline = connectivityService.isOnline.value;
-                            if (!isOnline) return SizedBox.shrink();
-                            return AttachmentExpandableButton(
-                              entity: note,
-                              count: attachmentController.totalCount.value,
-                              attachmentController: attachmentController,
-                            );
-                          }),
-                      ],
+                      if (widget.mode != Mode.view &&
+                          !widget.hideAttachmentButton)
+                        Obx(() {
+                          final isOnline = connectivityService.isOnline.value;
+                          if (!isOnline) return SizedBox.shrink();
+                          return AttachmentExpandableButton(
+                            entity: note,
+                            count: attachmentController.totalCount.value,
+                            attachmentController: attachmentController,
+                          );
+                        }),
                     ],
                   ),
                   const SizedBox(height: 10),
