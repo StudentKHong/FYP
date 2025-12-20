@@ -23,10 +23,6 @@ class NoteRepository extends UserRepository<Note> {
     final documentReference = await collection.addOfflineSafe(data);
     final createdEntity = await documentReference.get();
 
-    if (entity.label?.id != null) {
-      Get.find<LabelRepository>().incrementCount(entity.label!.id!, 1);
-    }
-
     // Transform data into Note object (causing label to be overriden).
     // Restore the original label.
     Note newNote = fromFirestore(createdEntity);
@@ -40,6 +36,7 @@ class NoteRepository extends UserRepository<Note> {
     return collection
         .where('isArchived', isNotEqualTo: true)
         .orderBy('isPinned', descending: true)
+        .orderBy('pinnedAt')
         .orderBy('updatedAt', descending: true)
         .snapshots(includeMetadataChanges: true)
         .map((snapshot) {
@@ -98,6 +95,9 @@ class NoteRepository extends UserRepository<Note> {
         .doc(groupId)
         .collection('shared_notes');
     return collection
+        .orderBy('isPinned', descending: true)
+        .orderBy('pinnedAt')
+        .orderBy('updatedAt', descending: true)
         .snapshots(includeMetadataChanges: true)
         .map((snapshot) => snapshot.docs.map(fromFirestore).toList());
   }
@@ -105,6 +105,9 @@ class NoteRepository extends UserRepository<Note> {
   Stream<List<Note>> watchByLabel(String labelId) {
     return collection
         .where('labelId', isEqualTo: labelId)
+        .orderBy('isPinned', descending: true)
+        .orderBy('pinnedAt')
+        .orderBy('updatedAt', descending: true)
         .snapshots(includeMetadataChanges: true)
         .asyncMap((snapshot) async {
           // Check and obtain current user uid.

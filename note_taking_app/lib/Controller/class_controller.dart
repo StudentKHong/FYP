@@ -13,6 +13,27 @@ class ClassController extends Controller<Class> {
     : super(repository: Get.find<ClassRepository>());
 
   @override
+  void onInit() {
+    super.onInit();
+
+    final AuthenticationController authController = Get.find<AuthenticationController>();
+    ever(authController.user, (user) {
+      watchAllSubscription?.cancel();
+      watchAllCountSubscription?.cancel();
+      watchAllSubscription?.cancel();
+      
+      if (user != null) {
+        getAll();
+        getAllCount();
+      } else {
+        list.clear();
+        filteredList.clear();
+        totalCount.value = 0;
+      }
+    });
+  }
+
+  @override
   ComponentFilter<Class>? createFilter() {
     return null;
   }

@@ -27,6 +27,7 @@ class Task implements AttachmentComponent, FilterableEntity {
   final Status? status;
   @override
   final bool isPinned;
+  final DateTime? pinnedAt;
   @override
   final bool? isArchived;
   @override
@@ -47,6 +48,7 @@ class Task implements AttachmentComponent, FilterableEntity {
     required this.updatedAt,
     required this.status,
     required this.isPinned,
+    this.pinnedAt,
     required this.isArchived,
     this.label,
     this.labelName,
@@ -74,6 +76,7 @@ class Task implements AttachmentComponent, FilterableEntity {
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
       status: Status.convertFromString(data['status'] as String?),
       isPinned: data['isPinned'] as bool,
+      pinnedAt: (data['pinnedAt'] as Timestamp?)?.toDate(),
       isArchived: data['isArchived'] as bool?,
       label: Label(
         id: data['labelId'] as String?,
@@ -97,6 +100,7 @@ class Task implements AttachmentComponent, FilterableEntity {
       'createdAt': createdAt,
       'updatedAt': updatedAt,
       'isPinned': isPinned,
+      'pinnedAt': pinnedAt,
       'isArchived': isArchived,
     };
 
@@ -176,6 +180,7 @@ class Task implements AttachmentComponent, FilterableEntity {
       updatedAt: isUpdated ? DateTime.now() : updatedAt,
       status: status ?? this.status,
       isPinned: isPinned ?? this.isPinned,
+      pinnedAt: isPinned != null ? (isPinned ? DateTime.now() : null): pinnedAt,
       isArchived: isArchived ?? this.isArchived,
       label: replaceLabel ? label: label ?? this.label,
       labelName: labelName ?? this.labelName,
@@ -205,6 +210,7 @@ class Task implements AttachmentComponent, FilterableEntity {
       updatedAt: updatedAt,
       status: status,
       isPinned: isPinned,
+      pinnedAt: pinnedAt,
       isArchived: isArchived,
     );
   }

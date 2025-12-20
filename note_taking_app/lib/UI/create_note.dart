@@ -4,7 +4,6 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_quill_extensions/flutter_quill_extensions.dart';
@@ -74,6 +73,8 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
   bool toggleEnabled = false;
   bool hasChanged = false;
   Label? selectedLabel;
+  String lastGeneratedContent = '';
+  bool hasGeneratedLabels = false;
 
   final TextEditingController titleController = TextEditingController();
   late QuillController contentController;
@@ -93,6 +94,9 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Clear suggested labels.
+    labelController.suggestedLabels.value = [];
 
     // Initilize note controller.
     if (widget.mode == Mode.createShared || widget.mode == Mode.editShared) {
@@ -162,20 +166,22 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
     numberOfCharacters = ValueNotifier(
       contentController.document.toPlainText().length,
     );
+    lastGeneratedContent = contentController.document.toPlainText().trim();
+    hasGeneratedLabels = false;
 
     _listenToContentChanges();
 
     // Load labels.
     selectedLabel = widget.initialLabel ?? widget.note?.label;
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      _loadLabels();
-      if (selectedLabel != null &&
-          !labelController.noteLabels.any(
-            (label) => label.id == selectedLabel!.id,
-          )) {
-        labelController.noteLabels.insert(0, selectedLabel!);
-      }
-    });
+    // SchedulerBinding.instance.addPostFrameCallback((_) {
+    //   _loadLabels();
+    //   if (selectedLabel != null &&
+    //       !labelController.noteLabels.any(
+    //         (label) => label.id == selectedLabel!.id,
+    //       )) {
+    //     labelController.noteLabels.insert(0, selectedLabel!);
+    //   }
+    // });
 
     // Load the initial state of the auto generate label toggle button.
     _loadCurrentSettings();
@@ -275,27 +281,12 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
           previousDocumentDelta = currentDelta;
         }
       });
-
-      // Update suggested labels if auto-generate is enabled.
-      // if (toggleEnabled) {
-      //   generateLabelDebounceTimer?.cancel();
-      //   generateLabelDebounceTimer = Timer(
-      //     const Duration(milliseconds: 500),
-      //     () async {
-      //       await labelController.generateLabel(
-      //         ComponentType.note,
-      //         contentController.document.toPlainText(),
-      //       );
-      //     },
-      //   );
-      // }
     });
   }
 
   void _loadCurrentSettings() async {
     await settingController.get();
     final settings = settingController.currentSettings.value;
-
     if (settings != null) {
       setState(() {
         toggleEnabled = settings.autoLabelingEnabled;
@@ -303,51 +294,24 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
     }
   }
 
-  void _loadLabels() async {
-    if (note != null && note!.label != null && note!.label!.id != null) {
-      // Load existing label.
-      labelController.getNoteLabels();
+  Future<void> _generateLabels() async {
+    if (!toggleEnabled) return;
 
-      // Load suggested labels.
-      if (note!.searchableContent != null) {
-        await labelController.generateLabel(
-          ComponentType.note,
-          note!.searchableContent!,
-        );
+    final currentContent = contentController.document.toPlainText().trim();
+    final isSuggestedEmpty = labelController.suggestedLabels.isEmpty;
+    final hasContentChanged = currentContent != lastGeneratedContent;
+
+    final shouldGenerate = isSuggestedEmpty || hasContentChanged;
+
+    if (shouldGenerate) {
+      await labelController.generateLabel(ComponentType.note, currentContent);
+
+      if (labelController.errorMessage.value.isEmpty) {
+        lastGeneratedContent = currentContent;
+        hasGeneratedLabels = true;
       }
     }
   }
-
-  // Future<Delta> _syncLocalImage(Delta delta) async {
-  //   final newDelta = Delta();
-
-  //   for (var operation in delta.toList()) {
-  //     final data = operation.data;
-  //     if (data is Map && data['image'] != null) {
-  //       final image = data['image'] as String;
-  //       if (image.toString().startsWith('data:image/')) {
-  //         final base64Data = image.split(',').last;
-  //         final bytes = base64Decode(base64Data);
-
-  //         // Upload image to Firebase Storage.
-  //         final storageReference = fs.FirebaseStorage.instance
-  //             .ref()
-  //             .child("note_images")
-  //             .child("${DateTime.now().millisecondsSinceEpoch}.jpg");
-  //         await storageReference.putData(bytes);
-
-  //         // Get download url.
-  //         final downloadUrl = await storageReference.getDownloadURL();
-  //         newDelta.insert({"image": downloadUrl});
-  //       } else {
-  //         newDelta.insert({"image": image});
-  //       }
-  //     } else {
-  //       newDelta.push(operation);
-  //     }
-  //   }
-  //   return newDelta;
-  // }
 
   Future<void> _commitAttachments(String componentId) async {
     if (note?.id != null) {
@@ -531,31 +495,32 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: SizedBox(
-                          width: 70,
-                          child: CustomLabelEditor(
-                            type: ComponentType.note,
-                            labelController: labelController,
-                            initialLabel:
-                                widget.initialLabel ?? widget.note?.label,
-                            isReadOnly:
-                                widget.isLabelReadOnly ||
-                                widget.mode == Mode.view,
-                            onTagsChanged: (value) {
-                              if (!widget.isLabelReadOnly) {
-                                setState(() {
-                                  selectedLabel = value;
-                                  updateHasChanged();
-                                });
-                              }
-                            },
-                            withGenerateLabelSwitch: widget.mode != Mode.view
-                                ? true
-                                : false,
-                            contentToSuggestLabel: contentController.document
-                                .toPlainText(),
-                            initialSwitchState: toggleEnabled,
-                          ),
+                        child: CustomLabelEditor(
+                          type: ComponentType.note,
+                          labelController: labelController,
+                          initialLabel:
+                              widget.initialLabel ?? widget.note?.label,
+                          isReadOnly:
+                              widget.isLabelReadOnly ||
+                              widget.mode == Mode.view,
+                          onTagsChanged: (value) {
+                            if (!widget.isLabelReadOnly) {
+                              setState(() {
+                                selectedLabel = value;
+                                updateHasChanged();
+                              });
+                            }
+                          },
+                          withGenerateLabelSwitch: widget.mode != Mode.view
+                              ? true
+                              : false,
+                          contentToSuggestLabel: contentController.document
+                              .toPlainText(),
+                          initialSwitchState: toggleEnabled,
+                          onToggled: (value) => setState(() {
+                            toggleEnabled = value;
+                          }),
+                          onEditorOpened: _generateLabels,
                         ),
                       ),
                       if (widget.mode != Mode.view &&
@@ -631,30 +596,6 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                   source: ImageSource.gallery,
                                 );
                                 if (pickedImage == null) return null;
-
-                                // final file = File(pickedImage.path);
-
-                                // if (connectivityService.isOnline.value) {
-                                //   try {
-                                //     // Save to Firebase Cloud Storage.
-                                //     final storageReference = FirebaseStorage
-                                //         .instance
-                                //         .ref()
-                                //         .child("note_images")
-                                //         .child(
-                                //           "${DateTime.now().millisecondsSinceEpoch}.jpg",
-                                //         );
-                                //     await storageReference.putFile(file);
-
-                                //     // Get download url.
-                                //     final downloadUrl = await storageReference
-                                //         .getDownloadURL();
-                                //     return downloadUrl;
-                                //   } catch (ex) {
-                                //     CustomDialog.showError("Error", "Failed to upload image.");
-                                //     return pickedImage.path;
-                                //   }
-                                // }
 
                                 return pickedImage.path;
                               },
@@ -734,28 +675,6 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                                       '${directory.path}/drawing_${DateTime.now().millisecondsSinceEpoch}.png';
                                                   final file = File(filePath);
                                                   await file.writeAsBytes(data);
-                                                  // final image =
-                                                  //     await decodeImageFromList(
-                                                  //       data,
-                                                  //     );
-                                                  // final byteData = await image
-                                                  //     .toByteData(
-                                                  //       format: ui
-                                                  //           .ImageByteFormat
-                                                  //           .png,
-                                                  //     );
-                                                  // final pngBytes = byteData!
-                                                  //     .buffer
-                                                  //     .asUint8List();
-
-                                                  // final base64 =
-                                                  //     base64Encode(pngBytes)
-                                                  //         .replaceAll('\n', '')
-                                                  //         .replaceAll('\r', '')
-                                                  //         .replaceAll(' ', '')
-                                                  //         .trim();
-                                                  // final imageUrl =
-                                                  //     'data:image/png;base64,$base64';
 
                                                   Get.back(result: filePath);
                                                 }
@@ -775,16 +694,6 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                   ),
                                 );
                                 if (result != null) {
-                                  // final data = base64Decode(result);
-                                  // final storageReference = FirebaseStorage.instance
-                                  //     .ref()
-                                  //     .child('drawings')
-                                  //     .child(
-                                  //       '${DateTime.now().millisecondsSinceEpoch}.png',
-                                  //     );
-                                  // await storageReference.putData(data);
-                                  // final downloadUrl = await storageReference
-                                  //     .getDownloadURL();
                                   contentController.replaceText(
                                     contentController.selection.baseOffset,
                                     0,

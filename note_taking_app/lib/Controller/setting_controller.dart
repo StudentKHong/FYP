@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:note_taking_app/Controller/auth_controller.dart';
 import 'package:note_taking_app/Controller/notification_controller.dart';
 import 'package:note_taking_app/Model/Models/setting_model.dart';
 import 'package:note_taking_app/Model/Repository/setting_repository.dart';
@@ -13,6 +14,20 @@ class SettingController extends GetxController {
   var isLoading = false.obs;
   var currentSettings = Rx<Setting?>(null);
   Timer? _debounce;
+
+  @override
+  void onInit() {
+    super.onInit();
+
+    final AuthenticationController authController = Get.find<AuthenticationController>();
+    ever(authController.user, (user) {      
+      if (user != null) {
+        get();
+      } else {
+        currentSettings.value = null;
+      }
+    });
+  }
 
   Future<void> get() async {
     try {

@@ -18,6 +18,7 @@ class Note implements AttachmentComponent, FilterableEntity {
   final DateTime updatedAt;
   @override
   final bool isPinned;
+  final DateTime? pinnedAt;
 
   // Only exist in notes.
   @override
@@ -39,6 +40,7 @@ class Note implements AttachmentComponent, FilterableEntity {
     required this.viewedAt,
     required this.updatedAt,
     required this.isPinned,
+    this.pinnedAt,
     required this.isArchived,
     this.label,
     this.labelName,
@@ -65,6 +67,7 @@ class Note implements AttachmentComponent, FilterableEntity {
       viewedAt: viewedAt,
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
       isPinned: data['isPinned'] as bool,
+      pinnedAt: (data['pinnedAt'] as Timestamp?)?.toDate(),
       isArchived: data['isArchived'] as bool?,
       label: label,
       labelName: labelName,
@@ -81,6 +84,7 @@ class Note implements AttachmentComponent, FilterableEntity {
       'createdAt': createdAt,
       'updatedAt': updatedAt,
       'isPinned': isPinned,
+      'pinnedAt': pinnedAt,
     };
     // Only exists for notes.
     if (viewedAt != null) {
@@ -101,32 +105,32 @@ class Note implements AttachmentComponent, FilterableEntity {
     return map;
   }
 
-  static Map<String, dynamic> toUpdateMap({
-    required String id,
-    String? title,
-    String? content,
-    String? searchableContent,
-    DateTime? createdAt,
-    DateTime? viewedAt,
-    DateTime? updatedAt,
-    bool? isPinned,
-    bool? isArchived,
-    Label? label,
-  }) {
-    final map = <String, dynamic>{'id': id};
+  // static Map<String, dynamic> toUpdateMap({
+  //   required String id,
+  //   String? title,
+  //   String? content,
+  //   String? searchableContent,
+  //   DateTime? createdAt,
+  //   DateTime? viewedAt,
+  //   DateTime? updatedAt,
+  //   bool? isPinned,
+  //   bool? isArchived,
+  //   Label? label,
+  // }) {
+  //   final map = <String, dynamic>{'id': id};
 
-    if (title != null) map['title'] = title;
-    if (content != null) map['content'] = content;
-    if (searchableContent != null) map['searchableContent'] = searchableContent;
-    if (createdAt != null) map['createdAt'] = createdAt;
-    if (viewedAt != null) map['viewedAt'] = viewedAt;
-    if (updatedAt != null) map['updatedAt'] = updatedAt;
-    if (isPinned != null) map['isPinned'] = isPinned;
-    if (isArchived != null) map['isArchived'] = isArchived;
-    if (label != null) map['labelId'] = label.id;
+  //   if (title != null) map['title'] = title;
+  //   if (content != null) map['content'] = content;
+  //   if (searchableContent != null) map['searchableContent'] = searchableContent;
+  //   if (createdAt != null) map['createdAt'] = createdAt;
+  //   if (viewedAt != null) map['viewedAt'] = viewedAt;
+  //   if (updatedAt != null) map['updatedAt'] = updatedAt;
+  //   if (isPinned != null) map['isPinned'] = isPinned;
+  //   if (isArchived != null) map['isArchived'] = isArchived;
+  //   if (label != null) map['labelId'] = label.id;
 
-    return map;
-  }
+  //   return map;
+  // }
 
   Note copyWith({
     String? id,
@@ -151,6 +155,9 @@ class Note implements AttachmentComponent, FilterableEntity {
       viewedAt: isViewed ? DateTime.now() : viewedAt,
       updatedAt: isUpdated ? DateTime.now() : updatedAt,
       isPinned: isPinned ?? this.isPinned,
+      pinnedAt: (isPinned ?? this.isPinned)
+          ? (this.isPinned ? pinnedAt : DateTime.now())
+          : null,
       isArchived: isArchived ?? this.isArchived,
       label: replaceLabel ? label : label ?? this.label,
       labelName: labelName ?? this.labelName,
@@ -180,6 +187,7 @@ class Note implements AttachmentComponent, FilterableEntity {
       viewedAt: viewedAt,
       updatedAt: updatedAt,
       isPinned: isPinned,
+      pinnedAt: pinnedAt,
       isArchived: isArchived,
       label: label,
       labelName: labelName,

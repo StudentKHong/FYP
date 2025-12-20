@@ -318,7 +318,8 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                                 group.createdBy ==
                                     Get.find<AuthenticationController>()
                                         .user
-                                        .value?.uid)
+                                        .value
+                                        ?.uid)
                             ? Mode.editShared
                             : Mode.view,
                         description:
@@ -334,6 +335,7 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                             : null,
                         groupId: groupId,
                         groupType: groupType,
+                        hideAttachmentButton: true,
                       ),
                     );
                   },
@@ -347,6 +349,7 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                               groupType: groupType,
                               description:
                                   "For $groupType ${widget.groupObject.name}",
+                              hideAttachmentButton: true,
                             ),
                           );
                         }
@@ -381,7 +384,8 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                                 group.createdBy ==
                                     Get.find<AuthenticationController>()
                                         .user
-                                        .value?.uid)
+                                        .value
+                                        ?.uid)
                             ? Mode.editShared
                             : Mode.view,
                         description:

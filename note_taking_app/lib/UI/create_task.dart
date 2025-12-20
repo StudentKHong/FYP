@@ -16,7 +16,6 @@ import 'package:note_taking_app/UI/SharedComponents/info_button.dart';
 import 'package:note_taking_app/UI/SharedComponents/label_editor.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/SharedComponents/text_box.dart';
-import 'package:note_taking_app/UI/SharedComponents/toggle_button.dart';
 import 'package:note_taking_app/UI/create_note.dart';
 import 'package:note_taking_app/main.dart';
 import 'package:signature/signature.dart';
@@ -55,6 +54,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   bool toggleEnabled = false;
   bool notificationsEnabled = true;
   bool hasChanged = false;
+  String lastGeneratedContent = '';
+  bool hasGeneratedLabels = false;
 
   late Task? original;
   Task? task;
@@ -80,6 +81,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Clear suggested labels.
+    labelController.suggestedLabels.value = [];
 
     // Set default values.
     original = widget.task?.copyWith();
@@ -121,6 +125,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
     titleController.text = task?.name ?? '';
     descriptionController.text = task?.description ?? '';
+
+    lastGeneratedContent = descriptionController.text.trim();
+    hasGeneratedLabels = false;
+
     selectedLabel = widget.initialLabel ?? task?.label;
 
     startDateTime = task?.startDateTime;
@@ -200,6 +208,25 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         ComponentType.task,
         task!.description ?? '',
       );
+    }
+  }
+
+  Future<void> _generateLabels() async {
+    if (!toggleEnabled) return;
+
+    final currentContent = descriptionController.text.trim();
+    final isSuggestedEmpty = labelController.suggestedLabels.isEmpty;
+    final hasContentChanged = currentContent != lastGeneratedContent;
+
+    final shouldGenerate = isSuggestedEmpty || hasContentChanged;
+
+    if (shouldGenerate) {
+      await labelController.generateLabel(ComponentType.note, currentContent);
+
+      if (labelController.errorMessage.value.isEmpty) {
+        lastGeneratedContent = currentContent;
+        hasGeneratedLabels = true;
+      }
     }
   }
 
@@ -469,7 +496,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             );
 
             if (widget.mode == Mode.edit) {
-              await taskController.edit([task!]);
+              taskController.edit([task!]);
               await _scheduleReminder(task!);
             } else if (widget.mode == Mode.editShared &&
                 widget.groupId != null &&
@@ -570,6 +597,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             : false,
                         contentToSuggestLabel: descriptionController.text,
                         initialSwitchState: toggleEnabled,
+                        onToggled: (value) => setState(() {
+                          toggleEnabled = value;
+                        }),
+                        onEditorOpened: _generateLabels,
                       ),
                     ),
                   ],
@@ -786,9 +817,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         final deviceCalendarPlugin = DeviceCalendarPlugin();
                         var permission = await deviceCalendarPlugin
                             .hasPermissions();
-                        if (permission.isSuccess && !permission.data!) {
-                          permission = await deviceCalendarPlugin
-                              .requestPermissions();
+                        if (permission.isSuccess && permission.data != true) {
+                          await deviceCalendarPlugin.requestPermissions();
                         }
 
                         final calendarsResult = await deviceCalendarPlugin

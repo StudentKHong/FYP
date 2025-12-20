@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import 'package:get/get.dart';
+import 'package:note_taking_app/Controller/auth_controller.dart';
 import 'package:note_taking_app/Model/Models/notification_model.dart';
 import 'package:note_taking_app/Model/Repository/notification_repository.dart';
 
-class NotificationController {
+class NotificationController extends GetxController{
   var list = <AppNotification>[].obs;
   var totalCount = 0.obs;
   var errorMessage = "".obs;
@@ -13,6 +14,24 @@ class NotificationController {
 
   StreamSubscription<List<AppNotification>>? _getAllSubscription;
   StreamSubscription<int>? _getCountSubscription;
+
+  @override
+  void onInit() {
+    super.onInit();
+
+    final AuthenticationController authController = Get.find<AuthenticationController>();
+    ever(authController.user, (user) {
+      _getAllSubscription?.cancel();
+      _getCountSubscription?.cancel();
+      
+      if (user != null) {
+        getAll();
+        getAllCount();
+      } else {
+        list.clear();
+      }
+    });
+  }
 
   static const Map<String, Duration?> options = {
     'None': null,

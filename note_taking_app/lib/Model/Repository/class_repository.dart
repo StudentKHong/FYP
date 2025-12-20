@@ -147,7 +147,9 @@ class ClassRepository extends BaseRepository<Class> {
         _authController.user.value!.userType ?? UserType.student,
       ),
     );
-    await classMemberCollection.add(classMember.toMap());
+    final classMap = classMember.toMap();
+    classMap.remove('id');
+    await classMemberCollection.add(classMap);
   }
 
   Future<void> leave(String classId) async {

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:note_taking_app/Controller/auth_controller.dart';
 import 'package:note_taking_app/Controller/base_controller.dart';
 import 'package:note_taking_app/Model/Models/attachment_model.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';

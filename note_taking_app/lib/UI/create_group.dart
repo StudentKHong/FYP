@@ -127,7 +127,7 @@ class CreateGroupScreen extends StatelessWidget {
                             );
                             groupData = createdTeam;
                             final errorMessage =
-                                classController.errorMessage.value;
+                                teamController.errorMessage.value;
                             if (errorMessage != "") {
                               CustomDialog.showError("Error", errorMessage);
                               teamController.errorMessage.value = "";

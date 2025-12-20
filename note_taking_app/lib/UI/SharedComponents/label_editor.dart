@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_typeahead/flutter_typeahead.dart';
-import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/label_controller.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
 import 'package:note_taking_app/UI/SharedComponents/search.dart';
-import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/SharedComponents/toggle_button.dart';
 
 class CustomLabelEditor extends StatefulWidget {
@@ -18,7 +15,9 @@ class CustomLabelEditor extends StatefulWidget {
   // Parameters for auto-generation labels.
   final bool withGenerateLabelSwitch;
   final bool initialSwitchState;
+  final ValueChanged<bool> onToggled;
   final String? contentToSuggestLabel;
+  final Future<void> Function()? onEditorOpened;
 
   const CustomLabelEditor({
     super.key,
@@ -29,7 +28,9 @@ class CustomLabelEditor extends StatefulWidget {
     this.isReadOnly = false,
     required this.withGenerateLabelSwitch,
     this.initialSwitchState = false,
+    required this.onToggled,
     this.contentToSuggestLabel,
+    this.onEditorOpened,
   });
 
   @override
@@ -41,18 +42,31 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
   final TextEditingController _searchController = TextEditingController();
   late Label? selectedLabel;
   // bool isProgrammaticallyChanged = false;
-  late bool generateLabelEnabled;
+  bool generateLabelEnabled = false;
 
   @override
   void initState() {
     super.initState();
 
-    print("Initial label: ${widget.initialLabel}");
     selectedLabel = widget.initialLabel;
-    generateLabelEnabled = widget.initialSwitchState;
-    print("Selected label: $selectedLabel");
+    print("INITIAL SWITCH STATE: ${widget.initialSwitchState}");
     // textController = TextEditingController(text: selectedLabel?.name);
     _loadLabels();
+  }
+
+  @override
+  void didUpdateWidget(covariant CustomLabelEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.initialSwitchState != widget.initialSwitchState) {
+      setState(() {
+        generateLabelEnabled = widget.initialSwitchState;
+      });
+
+      if (generateLabelEnabled) {
+        _loadSuggested();
+      }
+    }
   }
 
   Future<void> _loadLabels() async {
@@ -67,16 +81,28 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
     }
   }
 
+  Future<void> _loadSuggested() async {
+    if (widget.initialSwitchState &&
+        widget.labelController.suggestedLabels.isEmpty &&
+        widget.contentToSuggestLabel != null) {
+      await widget.labelController.generateLabel(
+        widget.type,
+        widget.contentToSuggestLabel!,
+      );
+    }
+  }
+
   Widget _buildBottomSheet({
     required List<Label> existing,
     required List<Label> suggested,
     required VoidCallback onSearch,
-    required void Function(void Function()) modalSetState
+    required void Function(void Function()) modalSetState,
   }) {
     final query = _searchController.text.toLowerCase();
     final filteredExisting = existing
         .where((label) => label.name.toLowerCase().contains(query))
         .toList();
+
     final filteredSuggestion = suggested
         .where(
           (label) =>
@@ -96,12 +122,14 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (widget.withGenerateLabelSwitch) _buildGenerateLabelSwitch(modalSetState: modalSetState),
+              if (widget.withGenerateLabelSwitch)
+                _buildGenerateLabelSwitch(modalSetState: modalSetState),
               Divider(),
               CustomSearchBar(
                 searchController: _searchController,
                 onSearch: (_) => onSearch(),
               ),
+              _buildCreateLabelOption(existing: existing, suggested: suggested),
               const SizedBox(height: 10),
               ..._buildSection(
                 title: "Existing Labels",
@@ -119,6 +147,62 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
             ],
           ),
         );
+      },
+    );
+  }
+
+  Widget _buildCreateLabelOption({
+    required List<Label> existing,
+    required List<Label> suggested,
+  }) {
+    return Builder(
+      builder: (context) {
+        final keyword = _searchController.text.trim();
+        if (keyword.isEmpty) return SizedBox.shrink();
+
+        final lowerKeyword = keyword.toLowerCase();
+        final matchExisting = existing.any(
+          (label) => label.name.toLowerCase().trim() == lowerKeyword,
+        );
+        final matchSuggested = suggested.any(
+          (label) => label.name.toLowerCase().trim() == lowerKeyword,
+        );
+
+        if (!matchExisting && !matchSuggested) {
+          return Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: ListTile(
+              leading: Icon(Icons.add),
+              title: RichText(
+                text: TextSpan(
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  children: [
+                    TextSpan(text: "Create new label: "),
+                    TextSpan(
+                      text: keyword,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+              onTap: () {
+                final label = Label(
+                  id: UniqueKey().toString(),
+                  name: keyword,
+                  type: widget.type,
+                  count: 0,
+                );
+                setState(() {
+                  selectedLabel = label;
+                });
+                widget.onTagsChanged?.call(label);
+                Navigator.pop(context);
+              },
+            ),
+          );
+        } else {
+          return SizedBox.shrink();
+        }
       },
     );
   }
@@ -164,9 +248,11 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
     ];
   }
 
-  Widget _buildGenerateLabelSwitch({required void Function(void Function()) modalSetState}) {
-    final labelController = widget.labelController;
-    final contentForLabelGeneration = widget.contentToSuggestLabel ?? "";
+  Widget _buildGenerateLabelSwitch({
+    required void Function(void Function()) modalSetState,
+  }) {
+    // final labelController = widget.labelController;
+    // final contentForLabelGeneration = widget.contentToSuggestLabel ?? "";
 
     return CustomSwitch(
       title: 'Generate Label',
@@ -179,36 +265,39 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
         // Update UI to display the suggested label.
         modalSetState(() {
           generateLabelEnabled = value;
+          widget.onToggled.call(value);
         });
-
-        // Generate label through controller.
-        await labelController.generateLabel(
-          widget.type,
-          contentForLabelGeneration,
-        );
-        if (labelController.errorMessage.value.isNotEmpty) {
-          CustomDialog.showError("Error", labelController.errorMessage.value);
-
-          modalSetState(() {
-            generateLabelEnabled = false;
-          });
-        } else {
-          CustomDialog.showSuccess("Info", "Label generated.");
-          modalSetState(() {});
-        }
       },
       layout: LayoutMode.listTile,
     );
   }
 
+  Future<void> _openLabelEditor() async {
+    showModalBottomSheet(
+      isScrollControlled: true,
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setState) {
+          final labelController = widget.labelController;
+          final existingLabels = widget.type == ComponentType.note
+              ? labelController.noteLabels
+              : labelController.taskLabels;
+          final newSuggestions = labelController.suggestedLabels;
+          return _buildBottomSheet(
+            existing: existingLabels,
+            suggested: newSuggestions,
+            onSearch: () => setState(() {}),
+            modalSetState: setState,
+          );
+        },
+      ),
+    );
+
+    await widget.onEditorOpened?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final labelController = widget.labelController;
-    final existingLabels = widget.type == ComponentType.note
-        ? labelController.noteLabels
-        : labelController.taskLabels;
-    final newSuggestions = labelController.suggestedLabels;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -221,273 +310,10 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
             selectedLabel?.name ?? "(None)",
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          trailing: Icon(Icons.edit),
-          onTap: () => widget.isReadOnly
-              ? null
-              : showModalBottomSheet(
-                  isScrollControlled: true,
-                  context: context,
-                  builder: (_) => StatefulBuilder(
-                    builder: (context, setState) {
-                      return _buildBottomSheet(
-                        existing: existingLabels,
-                        suggested: newSuggestions,
-                        onSearch: () => setState(() {}),
-                        modalSetState: setState
-                      );
-                    },
-                  ),
-                ),
+          trailing: widget.isReadOnly ? Icon(Icons.lock) : Icon(Icons.edit),
+          onTap: () => widget.isReadOnly ? null : _openLabelEditor(),
         ),
       ],
     );
-
-    // // Display label editor if is not read only.
-    // return SizedBox(
-    //   width: double.infinity,
-    //   child: Obx(() {
-    //     // Gather label lists.
-    //     final labelController = widget.labelController;
-    //     final existingLabels = widget.type == ComponentType.note
-    //         ? labelController.noteLabels
-    //         : labelController.taskLabels;
-
-    //     final newSuggestions = labelController.suggestedLabels;
-    //     print(
-    //       "Suggested labels: ${labelController.suggestedLabels.map((label) => label.name)}",
-    //     );
-
-    //     return TypeAheadField<Label>(
-    //       controller: textController,
-    //       builder: (context, controller, focusNode) {
-    //         if (selectedLabel != null && controller.text.isEmpty) {
-    //           controller.text = selectedLabel!.name;
-    //         }
-
-    //         return TextField(
-    //           controller: controller,
-    //           focusNode: focusNode,
-    //           decoration: InputDecoration(
-    //             labelText: "Label",
-    //             border: const OutlineInputBorder(),
-    //           ),
-    //         );
-    //       },
-    //       emptyBuilder: (context) {
-    //         final labelName = textController.text.trim();
-
-    //         final existingLabels =
-    //             (widget.type == ComponentType.note
-    //                     ? labelController.noteLabels
-    //                     : labelController.taskLabels)
-    //                 .toList();
-    //         final newSuggestions = labelController.suggestedLabels.toList();
-
-    //         final allLabels = [...existingLabels, ...newSuggestions];
-    //         final isExisting = allLabels.any(
-    //           (label) =>
-    //               label.name.toLowerCase().contains(labelName.toLowerCase()),
-    //         );
-    //         // print(labelName.isEmpty);
-    //         if (labelName.isEmpty || isExisting) {
-    //           return const SizedBox.shrink();
-    //         }
-
-    //         final tempLabel = Label(
-    //           id: UniqueKey().toString(),
-    //           name: labelName,
-    //           type: widget.type,
-    //           count: 0,
-    //         );
-    //         return ListTile(
-    //           leading: const Icon(Icons.new_label_outlined),
-    //           title: Text("Create ${tempLabel.name}"),
-    //           tileColor: Colors.yellow,
-    //           contentPadding: EdgeInsets.zero,
-    //           onTap: () async {
-    //             final newLabel = await labelController.create(tempLabel);
-    //             if (labelController.errorMessage.value.isNotEmpty) {
-    //               CustomDialog.showError(
-    //                 "Error",
-    //                 labelController.errorMessage.value,
-    //               );
-    //               return;
-    //             }
-    //             setState(() {
-    //               selectedLabel = newLabel;
-    //               textController.text = newLabel!.name;
-    //             });
-
-    //             widget.onTagsChanged?.call(newLabel!);
-    //           },
-    //         );
-    //       },
-    //       itemBuilder: (context, value) {
-    //         final newSuggestions = labelController.suggestedLabels;
-
-    //         bool isNewSuggestion =
-    //             newSuggestions.toList().any(
-    //               (label) => label.name == value.name,
-    //             ) &&
-    //             !existingLabels.toList().any(
-    //               (label) => label.name == value.name,
-    //             );
-
-    //         Color labelColor = isNewSuggestion ? Colors.blue : Colors.green;
-    //         Icon icon = isNewSuggestion
-    //             ? const Icon(Icons.new_label_outlined)
-    //             : const Icon(Icons.label);
-
-    //         return ListTile(
-    //           tileColor: labelColor,
-    //           contentPadding: const EdgeInsets.symmetric(
-    //             horizontal: 10,
-    //             vertical: 5,
-    //           ),
-    //           leading: icon,
-    //           title: Text(
-    //             isNewSuggestion ? "AI Suggestion: ${value.name}" : value.name,
-    //           ),
-    //         );
-    //       },
-    //       onSelected: (suggestion) async {
-    //         isProgrammaticallyChanged = true;
-    //         textController.text = suggestion.name;
-    //         isProgrammaticallyChanged = false;
-
-    //         setState(() {
-    //           selectedLabel = existingLabels.toList().firstWhere(
-    //             (label) => label.name == suggestion.name,
-    //             orElse: () => suggestion,
-    //           );
-    //         });
-
-    //         if (!existingLabels.toList().any(
-    //           (label) => label.name == suggestion.name,
-    //         )) {
-    //           selectedLabel = await labelController.create(suggestion);
-    //         } else {
-    //           selectedLabel = suggestion;
-    //         }
-    //         widget.onTagsChanged?.call(selectedLabel!);
-
-    //         if (mounted) {
-    //           Future.delayed(Duration(milliseconds: 10), () {
-    //             if (mounted) FocusScope.of(context).unfocus();
-    //           });
-    //         }
-    //       },
-    //       suggestionsCallback: (suggestion) {
-    //         if (suggestion.isEmpty) {
-    //           return [];
-    //         }
-    //         final lowerSuggestion = suggestion.toLowerCase();
-
-    //         final existingMatches = existingLabels
-    //             .toList()
-    //             .where(
-    //               (label) => label.name.toLowerCase().contains(lowerSuggestion),
-    //             )
-    //             .toList();
-
-    //         final aiMatches = newSuggestions
-    //             .where(
-    //               (label) =>
-    //                   label.name.toLowerCase().contains(lowerSuggestion) &&
-    //                   !existingMatches.any(
-    //                     (existing) =>
-    //                         existing.name.toLowerCase() ==
-    //                         label.name.toLowerCase(),
-    //                   ),
-    //             )
-    //             .toList();
-
-    //         return [...existingMatches, ...aiMatches];
-    //       },
-    //     );
-    //   }),
-    // );
-
-    // return Opacity(
-    //   opacity: widget.isReadOnly ? 0.6 : 1.0,
-    //   child: IgnorePointer(
-    //     ignoring: widget.isReadOnly,
-    //     child: Autocomplete<String>(
-    //       optionsBuilder: (textEditingValue) {
-    //         if (textEditingValue.text.isEmpty) {
-    //           return existingLabelNames;
-    //         }
-    //         return existingLabelNames.where(
-    //           (option) => option.toLowerCase().contains(
-    //             textEditingValue.text.toLowerCase(),
-    //           ),
-    //         );
-    //       },
-    //       // TODO: Introduce AI labels if enabled.
-    //       onSelected: (value) {
-    //         // Set the current label to the latest selected label.
-    //         if (!widget.isReadOnly) {
-    //           final label = widget.newSuggestions.firstWhere(
-    //             (label) => label.name == value,
-    //             orElse: () => Label(
-    //               id: UniqueKey().toString(),
-    //               name: value,
-    //               type: widget.type,
-    //               count: 0,
-    //             ),
-    //           );
-    //           setState(() {
-    //             selectedLabel = label;
-    //           });
-    //           widget.onTagsChanged?.call(label);
-    //         }
-    //       },
-    //       fieldViewBuilder:
-    //           (context, textEditingController, focusNode, onFieldSubmitted) {
-    //             if (!focusNode.hasFocus && selectedLabel != null) {
-    //               textEditingController.text = selectedLabel!.name;
-    //             }
-
-    //             return TextField(
-    //               controller: textEditingController,
-    //               focusNode: focusNode,
-    //               onSubmitted: (_) => onFieldSubmitted,
-    //               decoration: InputDecoration(
-    //                 labelText: "Label",
-    //                 border: OutlineInputBorder(),
-    //                 suffixIcon: IconButton(
-    //                   icon: Icon(focusNode.hasFocus ? Icons.arrow_drop_up : Icons.arrow_drop_down),
-    //                   onPressed: () {
-    //                     if (focusNode.hasFocus) {
-    //                       focusNode.unfocus();
-    //                     } else {
-    //                       textEditingController.clear();
-    //                       focusNode.requestFocus();
-    //                     }
-    //                   },
-    //                 ),
-    //               ),
-    //             );
-    //           },
-    //       optionsViewBuilder: (context, onSelected, options) {
-    //         return Material(
-    //           child: SizedBox(
-    //             height: 100,
-    //             child: ListView.builder(
-    //               itemCount: options.length,
-    //               itemBuilder: (context, index) {
-    //                 final option = options.elementAt(index);
-    //                 return ListTile(
-    //                   onTap: () => onSelected(option),
-    //                   title: Text(option),
-    //                 );
-    //               },
-    //             ),
-    //           ),
-    //         );
-    //       },
-    //     ),
-    //   ),
-    // );
   }
 }

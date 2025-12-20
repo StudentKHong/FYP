@@ -96,7 +96,7 @@ class LabelRepository extends UserRepository<Label> {
   }
 
   Future<List<String>> generateLabel(String text, List<String> labels) async {
-    final url = Uri.parse("http://127.0.0.1:8000/generate-label");
+    final url = Uri.parse("https://note-taking-app-zrdv.onrender.com/generate-labels");
     final response = await http.post(
       url,
       headers: {"Content-Type": "application/json"},
@@ -105,7 +105,7 @@ class LabelRepository extends UserRepository<Label> {
 
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);
-      return responseData['label'];
+      return List<String>.from(responseData['labels']);
     } else {
       throw Exception(
         'Failed to generate label: ${response.statusCode}, ${response.body}',

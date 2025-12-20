@@ -53,7 +53,7 @@ class Label extends BaseEntity {
   DateTime? get dateCreated => null;
 
   @override
-  Label copyWithId(String id) {
+  Label copyWithId(String? id) {
     return Label(id: id, name: name, type: type, count: count);
   }
 }

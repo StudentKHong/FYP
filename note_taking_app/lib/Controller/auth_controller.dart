@@ -1,17 +1,63 @@
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
+import 'package:note_taking_app/Controller/class_controller.dart';
+import 'package:note_taking_app/Controller/count_controller.dart';
+import 'package:note_taking_app/Controller/label_controller.dart';
+import 'package:note_taking_app/Controller/note_controller.dart';
+import 'package:note_taking_app/Controller/notification_controller.dart';
+import 'package:note_taking_app/Controller/setting_controller.dart';
+import 'package:note_taking_app/Controller/task_controller.dart';
+import 'package:note_taking_app/Controller/team_controller.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
 import 'package:note_taking_app/Model/Models/user_model.dart';
 import 'package:note_taking_app/Model/Repository/auth_repository.dart';
 import 'package:note_taking_app/UI/Navigation/named_routes.dart';
+import 'package:note_taking_app/UI/SharedComponents/app_theme.dart';
 
 class AuthenticationController extends GetxController {
   final AuthenticationRepository _authRepository =
       Get.find<AuthenticationRepository>();
-  Rx<User?> user = Rx<User?>(null);
+  final Rx<User?> firebaseUser = Rx<User?>(null);
+  final Rx<AppUser?> user = Rx<AppUser?>(null);
   String? errorMessage;
 
-  AuthenticationController();
+  @override
+  void onInit() {
+    super.onInit();
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      firebaseUser.value = user;
+
+      if (user == null) {
+        _onLogout();
+      } else {
+        _onLogin();
+      }
+    });
+  }
+
+  void _onLogin() {
+    Get.find<ThemeController>();
+    Get.find<NoteController>();
+    Get.find<TaskController>();
+    Get.find<ClassController>();
+    Get.find<TeamController>();
+    Get.find<LabelController>();
+    Get.find<SettingController>();
+    Get.find<NotificationController>();
+    Get.find<CountController>();
+  }
+
+  void _onLogout() {
+    Get.delete<CountController>(force: true);
+    Get.delete<NoteController>(force: true);
+    Get.delete<TaskController>(force: true);
+    Get.delete<LabelController>(force: true);
+    Get.delete<ClassController>(force: true);
+    Get.delete<TeamController>(force: true);
+    Get.delete<NotificationController>(force: true);
+    Get.delete<SettingController>(force: true);
+    Get.delete<ThemeController>(force: true);
+  }
 
   void checkAuthentication() {
     if (user.value == null) {
@@ -25,7 +71,7 @@ class AuthenticationController extends GetxController {
     try {
       errorMessage = "";
       // Login user through Firebase Authentication.
-      User? user = await _authRepository.login(email, password);
+      AppUser? user = await _authRepository.login(email, password);
       this.user.value = user;
 
       // Navigate to the correct screen after successfull login.
@@ -36,7 +82,7 @@ class AuthenticationController extends GetxController {
       } else {
         Get.offAllNamed(Routes.home);
       }
-    } on firebase_auth.FirebaseAuthException catch (ex) {
+    } on FirebaseAuthException catch (ex) {
       if (ex.code == 'user-not-found' ||
           ex.code == 'wrong-password' ||
           ex.code == 'invalid-credential') {
@@ -54,7 +100,7 @@ class AuthenticationController extends GetxController {
   Future<void> loginAnonymously() async {
     try {
       errorMessage = "";
-      User? user = await _authRepository.loginAnonymously();
+      AppUser? user = await _authRepository.loginAnonymously();
       this.user.value = user;
 
       // Navigate to the correct screen after successfull login.
@@ -96,9 +142,9 @@ class AuthenticationController extends GetxController {
   Future<void> logout() async {
     try {
       errorMessage = "";
-      _authRepository.signOut();
+      await _authRepository.signOut();
       user.value = null;
-    } on firebase_auth.FirebaseAuthException catch (ex) {
+    } on FirebaseAuthException catch (ex) {
       errorMessage = ex.message;
     } catch (ex) {
       errorMessage = "Failed to logout.";
@@ -115,7 +161,7 @@ class AuthenticationController extends GetxController {
       errorMessage = "";
       await _authRepository.signUp(name, userType, email, password);
       errorMessage = null;
-    } on firebase_auth.FirebaseAuthException catch (ex) {
+    } on FirebaseAuthException catch (ex) {
       if (ex.code == 'PASSWORD_DOES_NOT_MEET_REQUIREMENTS') {
         errorMessage = "Incorrect email or/and password.";
       } else if (ex.code == 'email-already-in-use') {
@@ -132,7 +178,7 @@ class AuthenticationController extends GetxController {
     try {
       errorMessage = "";
       await _authRepository.deleteAccount(email);
-    } on firebase_auth.FirebaseAuthException catch (ex) {
+    } on FirebaseAuthException catch (ex) {
       if (ex.code == 'wrong-password') {
         errorMessage = "Incorrect password.";
       }
@@ -153,7 +199,16 @@ class AuthenticationController extends GetxController {
     try {
       errorMessage = "";
       await _authRepository.updateProfile(name, email, password, profileUrl);
-      user = user;
+
+      if (firebaseUser.value != null && user.value != null) {
+        user.value = user.value!.copyWith(
+          name: name,
+          email: email,
+          profileUrl: profileUrl,
+        );
+        return;
+      }
+      errorMessage = "You are not logged in. Please re-login and try again.";
     } catch (ex) {
       if (ex.toString() == "") {
         errorMessage = "Failed to update profile.";

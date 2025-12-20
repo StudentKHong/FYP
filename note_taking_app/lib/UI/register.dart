@@ -171,7 +171,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           );
                         }
 
-                        if (authController.errorMessage == null || authController.errorMessage!.isNotEmpty) {
+                        if (authController.errorMessage != null && authController.errorMessage!.isNotEmpty) {
                           CustomDialog.showError(
                             'Register Failed',
                             authController.errorMessage!,

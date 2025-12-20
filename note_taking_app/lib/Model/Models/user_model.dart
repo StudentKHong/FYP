@@ -1,14 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
 
-class User {
+class AppUser {
   final String uid;
   final String? name;
   final String? email;
   final String? profileUrl;
   final UserType? userType;
 
-  User({
+  AppUser({
     required this.uid,
     this.name,
     this.email,
@@ -16,9 +16,9 @@ class User {
     this.userType,
   });
 
-  factory User.fromFirestore(DocumentSnapshot documentSnapshot) {
+  factory AppUser.fromFirestore(DocumentSnapshot documentSnapshot) {
     final data = documentSnapshot.data() as Map<String, dynamic>;
-    return User(
+    return AppUser(
       uid: documentSnapshot.id,
       name: data['name'] as String?,
       email: data['email'] as String?,
@@ -37,5 +37,20 @@ class User {
       'profileUrl': profileUrl,
       'userType': UserType.convertUserTypeToRole(userType),
     };
+  }
+
+  AppUser copyWith({
+    String? name,
+    String? email,
+    String? profileUrl,
+    UserType? userType
+  }) {
+    return AppUser(
+      uid: uid,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      profileUrl: profileUrl ?? this.profileUrl,
+      userType: userType ?? this.userType
+    );
   }
 }

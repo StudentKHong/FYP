@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:note_taking_app/Controller/auth_controller.dart';
 import 'package:note_taking_app/Controller/base_controller.dart';
 import 'package:note_taking_app/Controller/role_controller.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
@@ -18,6 +19,29 @@ class LabelController extends Controller<Label> {
   StreamSubscription<List<Label>>? _taskLabelSubscription;
 
   LabelController() : super(repository: Get.find<LabelRepository>());
+
+  @override
+  void onInit() {
+    super.onInit();
+
+    final AuthenticationController authController = Get.find<AuthenticationController>();
+    ever(authController.user, (user) {
+      watchAllSubscription?.cancel();
+      watchAllCountSubscription?.cancel();
+      watchAllSubscription?.cancel();
+      _noteLabelSubscription?.cancel();
+      _taskLabelSubscription?.cancel();
+      
+      if (user != null) {
+        getAll();
+        getNoteLabels();
+        getTaskLabels();
+      } else {
+        list.clear();
+        filteredList.clear();
+      }
+    });
+  }
 
   @override
   void onClose() {
@@ -107,6 +131,7 @@ class LabelController extends Controller<Label> {
   Future<void> generateLabel(ComponentType forType, String text) async {
     // Generate labels using Python backend.
     try {
+      errorMessage.value = "";
       final labelRepository = super.repository as LabelRepository;
       final existingLabels = forType == ComponentType.note
           ? noteLabels

@@ -23,9 +23,18 @@ class TaskController extends Controller<Task> {
     super.onInit();
     final authController = Get.find<AuthenticationController>();
     ever(authController.user, (user) {
+      watchAllSubscription?.cancel();
+      watchAllCountSubscription?.cancel();
+      watchByIdSubscription?.cancel();
+      _watchByGroupSubscription?.cancel();
+      _watchByLabelSubscription?.cancel();
+
       if (user != null) {
         _labelController.getTaskLabels();
         getAll();
+      } else {
+        list.clear();
+        filteredList.clear();
       }
     });
   }
@@ -35,6 +44,33 @@ class TaskController extends Controller<Task> {
     _watchByLabelSubscription?.cancel();
     _watchByGroupSubscription?.cancel();
     super.onClose();
+  }
+
+  @override
+  void pushItemToTop({
+    required Task entity,
+    bool forList = true,
+    bool forFilteredList = true,
+  }) {
+    if (forList) {
+      list.removeWhere((item) => item.id == entity.id);
+
+      final listIndex = list.indexWhere(
+        (item) => item.isPinned == entity.isPinned,
+      );
+      final adjustedIndex = listIndex == -1 ? 0 : listIndex;
+      list.insert(adjustedIndex, entity);
+      list.refresh();
+    }
+    if (forFilteredList) {
+      filteredList.removeWhere((item) => item.id == entity.id);
+      final filteredListIndex = filteredList.indexWhere(
+        (item) => item.isPinned == entity.isPinned,
+      );
+      final adjustedIndex = filteredListIndex == -1 ? 0 : filteredListIndex;
+      filteredList.insert(adjustedIndex, entity);
+      filteredList.refresh();
+    }
   }
 
   @override
@@ -57,8 +93,8 @@ class TaskController extends Controller<Task> {
           filteredList.add(newEntity);
         }
       }
-
-      pushItemToTop(entity: newEntity);
+      _sortLists(list: filteredList);
+      _sortLists(list: list);
 
       return newEntity;
     } catch (ex) {
@@ -212,6 +248,7 @@ class TaskController extends Controller<Task> {
           labelName: labelName,
           label: null,
           replaceLabel: true,
+          isPinned: false,
         );
       }).toList();
       final List<Task> createdGroupContents =
@@ -220,8 +257,10 @@ class TaskController extends Controller<Task> {
             groupId,
             groupType,
           );
-      list.addAll(createdGroupContents);
       filteredList.addAll(createdGroupContents);
+      _sortLists(list: filteredList);
+      list.addAll(createdGroupContents);
+      _sortLists(list: list);
     } catch (ex) {
       errorMessage.value = ex.toString();
     }
@@ -252,25 +291,28 @@ class TaskController extends Controller<Task> {
       errorMessage.value = "";
       // Delete selected shared tasks.
       final tasks = list.where((task) => taskIds.contains(task.id)).toList();
+      print("Tasks: ${tasks.map((task) => task.name)}");
+      print("Group Id: $groupId");
+      print("Group Type: $groupType");
       await (repository as TaskRepository).deleteShared(
         taskIds,
         groupId,
         groupType,
       );
 
-      // Update the count of the label.
-      final labelsToUpdate = <String, Label>{};
-      for (var task in tasks) {
-        final label = task.label;
-        if (label != null && label.id != null) {
-          labelsToUpdate[label.id!] = label;
-        }
-      }
-      await Future.wait(
-        labelsToUpdate.values.map(
-          (label) => _labelController.decrementCount(label),
-        ),
-      );
+      // // Update the count of the label.
+      // final labelsToUpdate = <String, Label>{};
+      // for (var task in tasks) {
+      //   final label = task.label;
+      //   if (label != null && label.id != null) {
+      //     labelsToUpdate[label.id!] = label;
+      //   }
+      // }
+      // await Future.wait(
+      //   labelsToUpdate.values.map(
+      //     (label) => _labelController.decrementCount(label),
+      //   ),
+      // );
 
       // Remove tasks from lists.
       final deletedNoteIds = tasks.map((task) => task.id).toList();
@@ -305,12 +347,40 @@ class TaskController extends Controller<Task> {
   }
 
   Future<void> togglePinStatus(Task task) async {
-    final updatedItem = task.copyWith(isPinned: !task.isPinned);
+    final bool isPinned = !task.isPinned;
+
+    final updatedItem = task.copyWith(
+      isPinned: isPinned,
+      isArchived: isPinned ? false : (task.isArchived ?? false),
+    );
+
+    _sortLists(list: filteredList);
+    _sortLists(list: list);
+
     await edit([updatedItem], pushToTop: false);
   }
 
+  // Sort Notes and Tasks only.
+  void _sortLists({required List<Task> list}) {
+    list.sort((a, b) {
+      if (a.isPinned != b.isPinned) {
+        return a.isPinned ? -1 : 1;
+      }
+      if (a.isPinned && b.isPinned) {
+        return a.pinnedAt!.compareTo(b.pinnedAt!);
+      }
+
+      return b.updatedAt.compareTo(a.updatedAt);
+    });
+  }
+
   Future<void> toggleArchiveStatus(Task task) async {
-    final updatedItem = task.copyWith(isArchived: !(task.isArchived ?? true));
+    final bool isArchived = !(task.isArchived ?? false);
+
+    final updatedItem = task.copyWith(
+      isArchived: isArchived,
+      isPinned: isArchived ? false : task.isPinned,
+    );
     await edit([updatedItem], pushToTop: false);
   }
 

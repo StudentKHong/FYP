@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:note_taking_app/Controller/label_controller.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
 import 'package:note_taking_app/Model/Models/task_model.dart';
 import 'package:note_taking_app/Model/Repository/crud_repository.dart';
@@ -34,6 +35,7 @@ class TaskRepository extends UserRepository<Task> {
     return collection
         .where('isArchived', isNotEqualTo: true)
         .orderBy('isPinned', descending: true)
+        .orderBy('pinnedAt')
         .orderBy('updatedAt', descending: true)
         .snapshots(includeMetadataChanges: true)
         .map((snapshot) {
@@ -92,6 +94,9 @@ class TaskRepository extends UserRepository<Task> {
         .doc(groupId)
         .collection('shared_tasks');
     return collection
+        .orderBy('isPinned', descending: true)
+        .orderBy('pinnedAt')
+        .orderBy('updatedAt', descending: true)
         .snapshots(includeMetadataChanges: true)
         .map((snapshot) => snapshot.docs.map(fromFirestore).toList());
   }
@@ -99,6 +104,9 @@ class TaskRepository extends UserRepository<Task> {
   Stream<List<Task>> watchByLabel(String labelId) {
     return collection
         .where('labelId', isEqualTo: labelId)
+        .orderBy('isPinned', descending: true)
+        .orderBy('pinnedAt')
+        .orderBy('updatedAt', descending: true)
         .snapshots(includeMetadataChanges: true)
         .asyncMap((snapshot) async {
           // Check and obtain current user uid.
@@ -197,7 +205,7 @@ class TaskRepository extends UserRepository<Task> {
     final batch = FirebaseFirestore.instance.batch();
 
     List<Task> updatedEntities = [];
-    for (final entity in entities) {
+    for (var entity in entities) {
       if (entity.id == null) {
         continue;
       }
@@ -206,21 +214,31 @@ class TaskRepository extends UserRepository<Task> {
       final oldTask = fromFirestore(oldSnapshot);
       final oldLabelId = oldTask.label?.id;
 
+      // Update old and current labels' counts.
+      final matchExisting = Get.find<LabelController>().taskLabels.any(
+        (label) => label.id == entity.label?.id,
+      );
+      if (oldLabelId != entity.label?.id) {
+        final LabelRepository labelRepository = Get.find<LabelRepository>();
+        if (oldLabelId != null) {
+          labelRepository.decrementCount(oldLabelId, -1);
+        }
+        if (entity.label != null && entity.label?.id != null) {
+          if (matchExisting) {
+            labelRepository.incrementCount(entity.label!.id!, 1);
+          } else {
+            final createdLabel = await labelRepository.create(entity.label!);
+            entity = entity.copyWith(label: createdLabel);
+          }
+        }
+      }
+
       // Update task.
       final documentReference = collection.doc(entity.id);
       final dataToUpdate = entity.toMap();
       dataToUpdate.remove('id');
       batch.update(documentReference, dataToUpdate);
 
-      // Update old and current labels' counts.
-      if (oldLabelId != entity.label?.id) {
-        if (oldLabelId != null) {
-          Get.find<LabelRepository>().decrementCount(oldLabelId, -1);
-        }
-        if (entity.label?.id != null) {
-          Get.find<LabelRepository>().incrementCount(entity.label!.id!, 1);
-        }
-      }
       updatedEntities.add(entity);
     }
     await batch.commit();
@@ -247,7 +265,7 @@ class TaskRepository extends UserRepository<Task> {
     String groupId,
     String groupType,
   ) async {
-    super.collection = FirebaseFirestore.instance
+    final collection = FirebaseFirestore.instance
         .collection(
           groupType.toLowerCase().trim() == 'class' ? 'classes' : 'teams',
         )

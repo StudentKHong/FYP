@@ -5,7 +5,7 @@ import 'package:note_taking_app/Model/Models/enumeration.dart' as model;
 import 'package:note_taking_app/Service/offline_first_service.dart';
 
 class AuthenticationRepository {
-  Future<user_model.User?> login(String email, String password) async {
+  Future<user_model.AppUser?> login(String email, String password) async {
     UserCredential userCredential = await FirebaseAuth.instance
         .signInWithEmailAndPassword(email: email, password: password);
 
@@ -15,13 +15,13 @@ class AuthenticationRepository {
           .collection('users')
           .doc(uid)
           .get();
-      return user_model.User.fromFirestore(documentSnapshot);
+      return user_model.AppUser.fromFirestore(documentSnapshot);
     }
 
     return null;
   }
 
-  Future<user_model.User?> loginAnonymously() async {
+  Future<user_model.AppUser?> loginAnonymously() async {
     UserCredential userCredential = await FirebaseAuth.instance
         .signInAnonymously();
     if (userCredential.user != null) {
@@ -31,22 +31,22 @@ class AuthenticationRepository {
           .doc(uid);
       final documentSnapshot = await documentReference.get();
       if (documentSnapshot.exists) {
-        return user_model.User.fromFirestore(documentSnapshot);
+        return user_model.AppUser.fromFirestore(documentSnapshot);
       } else {
-        final newUser = user_model.User(
+        final newUser = user_model.AppUser(
           uid: uid,
           name: 'Guest User',
           userType: model.UserType.guest,
         );
         await documentReference.set(newUser.toMap());
         final newDocumentSnapshot = await documentReference.get();
-        return user_model.User.fromFirestore(newDocumentSnapshot);
+        return user_model.AppUser.fromFirestore(newDocumentSnapshot);
       }
     }
     return null;
   }
 
-  Future<user_model.User> linkAnonymousAccountToEmail(
+  Future<user_model.AppUser> linkAnonymousAccountToEmail(
     String name,
     model.UserType userType,
     String email,
@@ -62,7 +62,7 @@ class AuthenticationRepository {
     await user.linkWithCredential(credential);
 
     // Update data in Firebase Firestore.
-    user_model.User userModel = user_model.User(
+    user_model.AppUser userModel = user_model.AppUser(
       uid: user.uid,
       name: name,
       email: email,
@@ -97,7 +97,7 @@ class AuthenticationRepository {
 
       // Create new user in Firebase Firestore.
       if (user != null) {
-        user_model.User createdUser = user_model.User(
+        user_model.AppUser createdUser = user_model.AppUser(
           uid: user.uid,
           name: name,
           email: user.email,

@@ -13,6 +13,26 @@ class TeamController extends Controller<Team> {
     : super(repository: Get.find<TeamRepository>());
 
   @override
+  void onInit() {
+    super.onInit();
+    final authController = Get.find<AuthenticationController>();
+    ever(authController.user, (user) {
+      watchAllSubscription?.cancel();
+      watchAllCountSubscription?.cancel();
+      watchByIdSubscription?.cancel();
+      
+      if (user != null) {
+        getAll();
+        getAllCount();
+      } else {
+        list.clear();
+        filteredList.clear();
+        totalCount.value = 0;
+      }
+    });
+  }
+
+  @override
   ComponentFilter<Team>? createFilter() {
     return null;
   }
@@ -24,7 +44,7 @@ class TeamController extends Controller<Team> {
 
       final data = await _teamRepository.join(code);
       if (list.any((item) => item.id == data.id)) {
-        CustomDialog.showInfo("Info", "You are already in the class.");
+        CustomDialog.showInfo("Info", "You are already in the team.");
         return data;
       }
       list.add(data);

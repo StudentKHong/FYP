@@ -6,6 +6,7 @@ import 'package:note_taking_app/Controller/base_controller.dart';
 import 'package:note_taking_app/Controller/label_controller.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
 import 'package:note_taking_app/Model/Models/note_model.dart';
+import 'package:note_taking_app/Model/Models/user_model.dart';
 import 'package:note_taking_app/Model/Repository/note_repository.dart';
 
 class NoteController extends Controller<Note> {
@@ -26,11 +27,23 @@ class NoteController extends Controller<Note> {
   @override
   void onInit() {
     super.onInit();
-    final authController = Get.find<AuthenticationController>();
-    ever(authController.user, (user) {
+
+    final AuthenticationController authController =
+        Get.find<AuthenticationController>();
+    ever(authController.user, (AppUser? user) {
+      watchAllSubscription?.cancel();
+      watchAllCountSubscription?.cancel();
+      watchByIdSubscription?.cancel();
+      _watchLabelSubscription?.cancel();
+      _watchByLabelSubscription?.cancel();
+      _watchByGroupSubscription?.cancel();
+
       if (user != null) {
         _labelController.getNoteLabels();
         getAll();
+      } else {
+        list.clear();
+        filteredList.clear();
       }
     });
   }
@@ -44,27 +57,67 @@ class NoteController extends Controller<Note> {
   }
 
   @override
+  void pushItemToTop({
+    required Note entity,
+    bool forList = true,
+    bool forFilteredList = true,
+  }) {
+    if (forList) {
+      list.removeWhere((item) => item.id == entity.id);
+
+      final listIndex = list.indexWhere(
+        (item) => item.isPinned == entity.isPinned,
+      );
+      final adjustedIndex = listIndex == -1 ? 0 : listIndex;
+      list.insert(adjustedIndex, entity);
+      list.refresh();
+    }
+    if (forFilteredList) {
+      filteredList.removeWhere((item) => item.id == entity.id);
+      final filteredListIndex = filteredList.indexWhere(
+        (item) => item.isPinned == entity.isPinned,
+      );
+      final adjustedIndex = filteredListIndex == -1 ? 0 : filteredListIndex;
+      filteredList.insert(adjustedIndex, entity);
+      filteredList.refresh();
+    }
+  }
+
+  @override
   Future<Note?> create(Note entity) async {
     try {
       errorMessage.value = "";
-      final newEntity = await repository.create(entity);
 
+      String? createdLabelId;
       if (entity.label != null && entity.label!.id != null) {
-        _labelController.incrementCount(entity.label!);
+        final existingLabels = _labelController.noteLabels;
+        if (existingLabels.any((label) => label.name == entity.label?.name)) {
+          _labelController.incrementCount(entity.label!);
+          createdLabelId = entity.label!.id;
+        } else {
+          final createdLabel = await _labelController.create(entity.label!);
+          createdLabelId = createdLabel?.id;
+        }
       }
-      // list.add(newEntity);
 
-      // if (currentFilter.value == null || currentFilter.value!.isEmpty) {
-      //   filteredList.add(newEntity);
-      // } else {
-      //   final filter = currentFilter.value!;
+      final labelWithId = entity.label?.copyWithId(createdLabelId);
+      final entityToCreate = entity.copyWith(label: labelWithId);
+      final newEntity = await repository.create(entityToCreate);
 
-      //   if (filter.baseFilter(newEntity)) {
-      //     filteredList.add(newEntity);
-      //   }
-      // }
+      list.add(newEntity);
 
-      // pushItemToTop(entity: newEntity);
+      if (currentFilter.value == null || currentFilter.value!.isEmpty) {
+        filteredList.add(newEntity);
+      } else {
+        final filter = currentFilter.value!;
+
+        if (filter.baseFilter(newEntity)) {
+          filteredList.add(newEntity);
+        }
+      }
+      _sortLists(list: filteredList);
+      _sortLists(list: list);
+      filteredList.refresh();
 
       return newEntity;
     } catch (ex) {
@@ -136,6 +189,12 @@ class NoteController extends Controller<Note> {
           currentFilter.value!.labelNames != null) {
         filter();
       }
+      print(
+        'Initial List: ${list.map((e) => '${e.id}:${e.isPinned}').toList()}',
+      );
+      print(
+        'Initial Filtered List: ${filteredList.map((e) => '${e.id}:${e.isPinned}').toList()}',
+      );
     } catch (ex) {
       errorMessage.value = "Something went wrong.";
     }
@@ -212,6 +271,7 @@ class NoteController extends Controller<Note> {
           labelName: labelName,
           label: null,
           replaceLabel: true,
+          isPinned: false,
         );
       }).toList();
       final List<Note> createdGroupContents =
@@ -220,8 +280,10 @@ class NoteController extends Controller<Note> {
             groupId,
             groupType,
           );
-      list.addAll(createdGroupContents);
       filteredList.addAll(createdGroupContents);
+      _sortLists(list: filteredList);
+      list.addAll(createdGroupContents);
+      _sortLists(list: list);
     } catch (ex) {
       errorMessage.value = ex.toString();
     }
@@ -237,7 +299,7 @@ class NoteController extends Controller<Note> {
       );
 
       // Update reactive list and filteredList.
-      pushItemToTop(entity: newEntity);
+      pushItemToTop(entity: newEntity, forList: true, forFilteredList: true);
     } catch (ex) {
       errorMessage.value = ex.toString();
     }
@@ -258,19 +320,19 @@ class NoteController extends Controller<Note> {
         groupType,
       );
 
-      // Update the count of the label.
-      final labelsToUpdate = <String, Label>{};
-      for (var note in notes) {
-        final label = note.label;
-        if (label != null && label.id != null) {
-          labelsToUpdate[label.id!] = label;
-        }
-      }
-      await Future.wait(
-        labelsToUpdate.values.map(
-          (label) => _labelController.decrementCount(label),
-        ),
-      );
+      // // Update the count of the label.
+      // final labelsToUpdate = <String, Label>{};
+      // for (var note in notes) {
+      //   final label = note.label;
+      //   if (label != null && label.id != null) {
+      //     labelsToUpdate[label.id!] = label;
+      //   }
+      // }
+      // await Future.wait(
+      //   labelsToUpdate.values.map(
+      //     (label) => _labelController.decrementCount(label),
+      //   ),
+      // );
 
       // Remove notes from lists.
       final deletedNoteIds = notes.map((task) => task.id).toList();
@@ -304,7 +366,7 @@ class NoteController extends Controller<Note> {
       // Push the notes to the top due to update.
       for (var id in noteIds) {
         final note = list.firstWhere((note) => note.id == id);
-        pushItemToTop(entity: note);
+        pushItemToTop(entity: note, forList: true, forFilteredList: true);
       }
     } catch (ex) {
       errorMessage.value = "Something went wrong";
@@ -316,7 +378,23 @@ class NoteController extends Controller<Note> {
       isPinned: !note.isPinned,
       isArchived: !(note.isPinned) ? false : (note.isArchived ?? false),
     );
+    _sortLists(list: filteredList);
+    _sortLists(list: list);
     await edit([updatedItem], pushToTop: false);
+  }
+
+  // Sort Notes and Tasks only.
+  void _sortLists({required List<Note> list}) {
+    list.sort((a, b) {
+      if (a.isPinned != b.isPinned) {
+        return a.isPinned ? -1 : 1;
+      }
+      if (a.isPinned && b.isPinned) {
+        return a.pinnedAt!.compareTo(b.pinnedAt!);
+      }
+
+      return b.updatedAt.compareTo(a.updatedAt);
+    });
   }
 
   Future<void> toggleArchiveStatus(Note note) async {

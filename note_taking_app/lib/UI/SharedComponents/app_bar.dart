@@ -429,7 +429,7 @@ class NavigationButtons {
           } else {
             tempController = Get.find<NoteController>(tag: "notes_archived");
           }
-          
+
           navigate(
             page: ListScreen<Note>(
               title: "Archived Notes",
@@ -524,13 +524,18 @@ class NavigationButtons {
     required BuildContext context,
     required int totalCount,
   }) {
+    final roleController = Get.find<RoleController>();
     return [
       drawerTile(
         context: context,
         leadingIcon: Icons.label,
         title: 'View All',
         trailingText: totalCount.toString(),
-        onTap: () => navigate(routeName: Routes.classes),
+        onTap: () => navigate(
+          routeName: roleController.hasPermission(PermissionType.viewClass)
+              ? Routes.classes
+              : Routes.teams,
+        ),
       ),
     ];
   }
@@ -638,7 +643,13 @@ class AdditionalOptions {
                       ?.map((item) => item.id)
                       .whereType<String>()
                       .toList();
-                  print("Note id: ${notes?.first.id}");
+                  print("Task id: ${tasks?.first.id}");
+                  print("isForShared: $isForShared");
+                  print("noteIds: $noteIds");
+                  print("taskIds: $taskIds");
+                  print("labelIds: $labelIds");
+                  print("controller type: ${controller.runtimeType}");
+                  print("groupId: $groupId, groupType: $groupType");
 
                   if (isForShared &&
                       noteIds != null &&
@@ -654,7 +665,7 @@ class AdditionalOptions {
                   }
                   if (isForShared &&
                       taskIds != null &&
-                      controller is NoteController) {
+                      controller is TaskController) {
                     if (groupId != null && groupType != null) {
                       print("Delete Shared Tasks.");
                       await controller.deleteShared(

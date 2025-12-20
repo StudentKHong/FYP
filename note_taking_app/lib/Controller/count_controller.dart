@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:note_taking_app/Controller/auth_controller.dart';
 import 'package:note_taking_app/Controller/class_controller.dart';
 import 'package:note_taking_app/Controller/note_controller.dart';
 import 'package:note_taking_app/Controller/notification_controller.dart';
@@ -7,12 +8,12 @@ import 'package:note_taking_app/Controller/task_controller.dart';
 import 'package:note_taking_app/Controller/team_controller.dart';
 
 class CountController extends GetxController {
-  final RoleController _roleController;
-  final NoteController _noteController;
-  final TaskController _taskController;
-  final ClassController _classController;
-  final TeamController _teamController;
-  final NotificationController _notificationController;
+  late final RoleController _roleController;
+  late final NoteController _noteController;
+  late final TaskController _taskController;
+  late final ClassController _classController;
+  late final TeamController _teamController;
+  late final NotificationController _notificationController;
 
   var noteCounts = <String, RxInt>{}.obs;
   var taskCounts = <String, RxInt>{}.obs;
@@ -23,19 +24,32 @@ class CountController extends GetxController {
 
   String? errorMessage;
 
-  CountController({
-    required RoleController roleController,
-    required NoteController noteController,
-    required TaskController taskController,
-    required ClassController classController,
-    required TeamController teamController,
-    required NotificationController notificationController,
-  }) : _roleController = roleController,
-       _noteController = noteController,
-       _taskController = taskController,
-       _classController = classController,
-       _teamController = teamController,
-       _notificationController = notificationController;
+  @override
+  void onInit() {
+    super.onInit();
+    _roleController = Get.find<RoleController>();
+    _noteController = Get.find<NoteController>();
+    _taskController = Get.find<TaskController>();
+    _classController = Get.find<ClassController>();
+    _teamController = Get.find<TeamController>();
+    _notificationController = Get.find<NotificationController>();
+    final AuthenticationController authController = Get.find<AuthenticationController>();
+    ever(authController.user, (user) {
+      if (user != null) {
+        getAllNotesCount();
+        getAllTasksCount();
+        getAllNotificationsCount();
+        getAllGroupsCount();
+      } else {
+        noteCounts.value = {};
+        taskCounts.value = {};
+        notesCount.value = 0;
+        tasksCount.value = 0;
+        notificationCount.value = 0;
+        groupCount.value = 0;
+      }
+    });
+  }
 
   Future<void> getNoteCount(String labelId) async {
     final size = await _noteController.getCountByLabel(labelId);

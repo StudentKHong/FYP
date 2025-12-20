@@ -223,9 +223,6 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
         labelName = item.label?.name ?? item.labelName;
       } else if (item is Task) {
         labelName = item.label?.name ?? item.labelName;
-        print("LABEL NAME (In Archived): $labelName");
-        print("ITEM.LABEL.NAME (In Archived): ${item.label?.name}");
-        print("ITEM.LABELNAME (In Archived): ${item.labelName}");
       }
       if (labelName != null) {
         otherDetails.add(labelName);
@@ -297,31 +294,33 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
               color: Colors.black,
             ),
           ),
-        IconButton(
-          onPressed: () async {
-            // final isPinned = (item as dynamic).isPinned;
-            // final isArchived = (item as dynamic).isArchived ?? false;
-            // final newItem = (item as dynamic).copyWith(isArchived: !isArchived, isPinned: !isArchived ? false : isPinned);
+        if (widget.pageType != ListScreenType.sharedNotes &&
+            widget.pageType != ListScreenType.sharedTasks)
+          IconButton(
+            onPressed: () async {
+              // final isPinned = (item as dynamic).isPinned;
+              // final isArchived = (item as dynamic).isArchived ?? false;
+              // final newItem = (item as dynamic).copyWith(isArchived: !isArchived, isPinned: !isArchived ? false : isPinned);
 
-            final index = _controller.filteredList.indexOf(item);
-            if (index != -1) {
-              _controller.filteredList.removeAt(index);
-              // sortList();
-            }
+              final index = _controller.filteredList.indexOf(item);
+              if (index != -1) {
+                _controller.filteredList.removeAt(index);
+                // sortList();
+              }
 
-            if (item is Note) {
-              await (_controller as NoteController).toggleArchiveStatus(item);
-            } else if (item is Task) {
-              await (_controller as TaskController).toggleArchiveStatus(item);
-            }
-          },
-          icon: Icon(
-            (item as dynamic).isArchived ?? false
-                ? Icons.archive
-                : Icons.archive_outlined,
-            color: Colors.black,
+              if (item is Note) {
+                await (_controller as NoteController).toggleArchiveStatus(item);
+              } else if (item is Task) {
+                await (_controller as TaskController).toggleArchiveStatus(item);
+              }
+            },
+            icon: Icon(
+              (item as dynamic).isArchived ?? false
+                  ? Icons.archive
+                  : Icons.archive_outlined,
+              color: Colors.black,
+            ),
           ),
-        ),
       ]);
     }
     return iconButtons;
@@ -484,9 +483,11 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
                                     hideArchive: true,
                                     hideShare:
                                         widget.pageType ==
-                                            ListScreenType.noteLabels ||
-                                        widget.pageType ==
-                                            ListScreenType.taskLabels ? true : false,
+                                                ListScreenType.noteLabels ||
+                                            widget.pageType ==
+                                                ListScreenType.taskLabels
+                                        ? true
+                                        : false,
                                   ),
                                   IconButton(
                                     onPressed: () {
@@ -556,7 +557,11 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
                         widget.pageType == ListScreenType.classes ||
                                 widget.pageType == ListScreenType.teams
                             ? AddButtonPopUp(
-                                classJoinFunction: (code) async {
+                                forGroupType:
+                                    widget.pageType == ListScreenType.classes
+                                    ? "class"
+                                    : "team",
+                                joinFunction: (code) async {
                                   if (widget.pageType ==
                                       ListScreenType.classes) {
                                     final joinedClass =
@@ -726,8 +731,13 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
 typedef AsyncJoinCallback = Future<void> Function(String code);
 
 class AddButtonPopUp extends StatefulWidget {
-  final AsyncJoinCallback? classJoinFunction;
-  const AddButtonPopUp({super.key, this.classJoinFunction});
+  final String forGroupType;
+  final AsyncJoinCallback? joinFunction;
+  const AddButtonPopUp({
+    super.key,
+    required this.forGroupType,
+    this.joinFunction,
+  });
 
   @override
   State<AddButtonPopUp> createState() => _AddButtonPopUpState();
@@ -830,9 +840,7 @@ class _AddButtonPopUpState extends State<AddButtonPopUp> {
                   ),
                   onPressed: () async {
                     final String code = controller.text;
-                    if (widget.classJoinFunction != null) {
-                      await widget.classJoinFunction!(code);
-                    }
+                    await widget.joinFunction!(code);
                     _removePopUp();
                   },
                   child: Text(
@@ -851,6 +859,10 @@ class _AddButtonPopUpState extends State<AddButtonPopUp> {
   }
 
   Widget _popup(Function(VoidCallback) localSetState) {
+    final groupType = widget.forGroupType.toLowerCase().trim();
+    final isClass = groupType == "class";
+    final isTeam = groupType == "team";
+
     return Card(
       elevation: 4,
       child: Column(
@@ -860,15 +872,27 @@ class _AddButtonPopUpState extends State<AddButtonPopUp> {
             onPressed: () => localSetState(() {
               isJoinSelected = true;
             }),
-            child: Text('Join Class'),
+            child: Text('Join ${isClass ? "Class" : "Team"}'),
           ),
-          TextButton(
-            onPressed: () {
-              _removePopUp();
-              Get.toNamed(Routes.createClass);
-            },
-            child: Text('Create Class'),
-          ),
+          if ((isClass &&
+                  Get.find<RoleController>().hasPermission(
+                    PermissionType.createClass,
+                  )) ||
+              (isTeam &&
+                  Get.find<RoleController>().hasPermission(
+                    PermissionType.viewCreateTeam,
+                  )))
+            TextButton(
+              onPressed: () {
+                _removePopUp();
+                if (isClass) {
+                  Get.toNamed(Routes.createClass);
+                } else if (isTeam) {
+                  Get.toNamed(Routes.createTeam);
+                }
+              },
+              child: Text('Create ${isClass ? "Class" : "Team"}'),
+            ),
         ],
       ),
     );

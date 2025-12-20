@@ -61,7 +61,6 @@ void main() async {
         await taskController.getById(taskId);
         final task = taskController.content.value;
         if (task != null) {
-          
           final notificationController = Get.find<NotificationController>();
           notificationController.markReadStatus(response.id.toString(), true);
           Get.to(() => TaskDetailScreen(mode: Mode.view, task: task));
@@ -85,31 +84,18 @@ void main() async {
   Get.put(SettingRepository(), permanent: true);
 
   // Initialize global controllers.
-  final roleController = Get.put(RoleController(), permanent: true);
-  Get.put(LabelController(), permanent: true);
-  final noteController = Get.put(NoteController(), permanent: true);
-  final taskController = Get.put(TaskController(), permanent: true);
-  final classController = Get.put(ClassController(), permanent: true);
-  final teamController = Get.put(TeamController(), permanent: true);
-  final notificationController = Get.put(
-    NotificationController(),
-    permanent: true,
-  );
-  Get.put(SettingController(), permanent: true);
+  Get.lazyPut(() => RoleController(), fenix: true);
+  Get.lazyPut(() => LabelController(), fenix: true);
+  Get.lazyPut(() => NoteController(), fenix: true);
+  Get.lazyPut(() => TaskController(), fenix: true);
+  Get.lazyPut(() => ClassController(), fenix: true);
+  Get.lazyPut(() => TeamController(), fenix: true);
+  Get.lazyPut(() => NotificationController(), fenix: true);
+  Get.lazyPut(() => SettingController(), fenix: true);
 
-  final themeController = Get.put(ThemeController(), permanent: true);
+  Get.lazyPut(() => ThemeController(), fenix: true);
 
-  Get.put(
-    CountController(
-      roleController: roleController,
-      noteController: noteController,
-      taskController: taskController,
-      classController: classController,
-      teamController: teamController,
-      notificationController: notificationController,
-    ),
-    permanent: true,
-  );
+  Get.lazyPut(() => CountController(), fenix: true);
 
   // Get.put(NoteTaskController<Task>(repository: TaskRepository(uid: uid)));
   runApp(
@@ -118,7 +104,7 @@ void main() async {
         title: 'Note Taking App',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
-        themeMode: themeController.theme,
+        themeMode: Get.find<ThemeController>().theme,
         initialRoute: Routes.login,
         getPages: Routes.pages,
         localizationsDelegates: [FlutterQuillLocalizations.delegate],
@@ -129,7 +115,7 @@ void main() async {
 
   WidgetsBinding.instance.addPostFrameCallback((_) async {
     await Get.putAsync(() async => ConnectivityService());
-    await themeController.loadLocalTheme();
+    await Get.find<ThemeController>().loadLocalTheme();
     await Get.putAsync<UploadImageService>(() async {
       final service = UploadImageService();
       await service.onInit();

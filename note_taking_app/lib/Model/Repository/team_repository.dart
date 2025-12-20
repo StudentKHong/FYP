@@ -41,26 +41,26 @@ class TeamRepository extends BaseRepository<Team> {
     documentReference.setOfflineSafe(data);
 
     // Add user as team member.
-    _addMemberToTeam(documentReference.id);
+    _addMemberToTeam(teamId: documentReference.id, memberRole: TeamMemberRole.lead);
 
     return entity;
   }
 
-  Future<void> _addMemberToTeam(String teamId) async {
+  Future<void> _addMemberToTeam({required String teamId, required TeamMemberRole memberRole}) async {
     // Add user as member of the class.
-    final classMemberCollection = FirebaseFirestore.instance.collection(
-      'class_members',
+    final teamMemberCollection = FirebaseFirestore.instance.collection(
+      'team_members',
     );
-    final classMember = TeamMember(
+    final teamMember = TeamMember(
       id: UniqueKey().toString(),
       teamId: teamId,
       userId: _authController.user.value!.uid,
       joinedAt: DateTime.now(),
-      role: TeamMemberRole.convertUserTypeToMemberRole(
-        _authController.user.value!.userType ?? UserType.student,
-      ),
+      role: memberRole
     );
-    await classMemberCollection.add(classMember.toMap());
+    final teamMap = teamMember.toMap();
+    teamMap.remove('id');
+    await teamMemberCollection.add(teamMap);
   }
 
   @override
@@ -76,7 +76,7 @@ class TeamRepository extends BaseRepository<Team> {
 
     return stream.asyncMap((snapshot) async {
       final List<String> teamIds = snapshot.docs
-          .map((document) => document['classId'] as String)
+          .map((document) => document['teamId'] as String)
           .toSet()
           .toList();
 
@@ -131,7 +131,7 @@ class TeamRepository extends BaseRepository<Team> {
     }
 
     // Add user as a team member.
-    _addMemberToTeam(documentSnapshot.id);
+    _addMemberToTeam(teamId: documentSnapshot.id, memberRole: TeamMemberRole.member);
 
     // Increment number of total members by 1.
     final documentReference = super.collection.doc(documentSnapshot.id);
