@@ -7,6 +7,7 @@ import 'package:note_taking_app/Model/Models/note_model.dart';
 import 'package:note_taking_app/Model/Models/task_model.dart';
 import 'package:note_taking_app/UI/Navigation/named_routes.dart';
 import 'package:note_taking_app/UI/SharedComponents/extended_card.dart';
+import 'package:note_taking_app/UI/SharedComponents/loading_state.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/create_note.dart';
 import 'package:note_taking_app/UI/create_task.dart';
@@ -17,13 +18,6 @@ class AttachmentScreen {
     FilterableEntity? entity,
     required AttachmentController attachmentController,
   }) async {
-    // Initialize controller.
-    // final componentId = entity?.id ?? "temp_${UniqueKey()}";
-    // print("Attachment Controller's Tag to create (In Attachment): $componentId");
-    // AttachmentController attachmentController = Get.find<AttachmentController>(
-    //   tag: componentId,
-    // );
-
     // Fetch data if base entity is not null.
     if (entity != null && entity.id != null) {
       try {
@@ -81,18 +75,30 @@ class AttachmentScreen {
                       final listToShow = (entity == null || entity.id == null)
                           ? attachmentController.temporaryList
                           : attachmentController.attachmentComponents;
+
+                      if (attachmentController.isLoading.value &&
+                          listToShow.isEmpty) {
+                        return const LoadingShimmer();
+                      }
+
                       return Column(
                         children: [
                           listToShow.isEmpty
                               ? Expanded(
-                                  child: Center(
-                                    child: Text(
-                                      'No attachments found.',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyLarge!
-                                          .copyWith(color: Colors.red),
-                                    ),
+                                  child: EmptyState(
+                                    icon: Icons.attachment_outlined,
+                                    message: "No attachments yet.",
+                                    actionText: "Create an attachment.",
+                                    action: () {
+                                      Navigator.of(context).pop();
+                                      Get.toNamed(
+                                        Routes.addAttachment,
+                                        arguments: {
+                                          "controller": attachmentController,
+                                          "entity": entity,
+                                        },
+                                      );
+                                    },
                                   ),
                                 )
                               : Expanded(
@@ -159,10 +165,7 @@ class AttachmentScreen {
                                     },
                                   );
                                 },
-                                child: Text(
-                                  'Add',
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
+                                child: Text('Add'),
                               ),
                             ),
                           ),

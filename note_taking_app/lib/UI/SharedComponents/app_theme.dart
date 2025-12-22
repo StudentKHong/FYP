@@ -1,41 +1,132 @@
 // To support changing between dark and light themes through settings.
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppTheme {
   static final ThemeData lightTheme = ThemeData(
-    brightness: Brightness.light,
-    primarySwatch: Colors.blue,
-    scaffoldBackgroundColor: Colors.white,
+    useMaterial3: true,
+    colorScheme: ColorScheme.fromSeed(
+      brightness: Brightness.light,
+      seedColor: Colors.lightBlue,
+    ).copyWith(onPrimary: Colors.black),
+    scaffoldBackgroundColor: Color(0xFFF4F5F7),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.blue,
       foregroundColor: Colors.white,
     ),
-    cardColor: Colors.white,
-    dividerColor: Colors.grey,
-    textTheme: const TextTheme(
-      titleMedium: TextStyle(color: Colors.black, fontSize: 18),
-      bodyMedium: TextStyle(color: Colors.black87, fontSize: 16),
-      bodyLarge: TextStyle(color: Colors.black, fontSize: 18),
+    cardTheme: CardThemeData(
+      surfaceTintColor: Colors.transparent,
+      color: Colors.white,
+      elevation: 2,
+      margin: EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: Colors.white,
+      prefixIconColor: Colors.black,
+      suffixIconColor: Colors.black,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide.none,
+      ),
+    ),
+    dividerColor: Colors.grey[700],
+    textTheme: GoogleFonts.interTextTheme().apply(
+      bodyColor: Colors.black,
+      displayColor: Colors.black,
+    ),
+    datePickerTheme: DatePickerThemeData(
+      backgroundColor: Colors.white,
+      headerBackgroundColor: Colors.grey,
+      headerForegroundColor: Colors.black,
+      headerHelpStyle: GoogleFonts.inter(fontSize: 12, color: Colors.grey),
+      headerHeadlineStyle: GoogleFonts.inter(fontSize: 16, color: Colors.black),
+      dayStyle: GoogleFonts.inter(fontSize: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+      ),
+    ),
+    iconTheme: IconThemeData(color: Colors.black),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return Colors.blue;
+        return Colors.grey;
+      }),
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return Colors.blue.withAlpha(50);
+        return Colors.grey.withAlpha(50);
+      }),
+      trackOutlineColor: WidgetStatePropertyAll(Colors.grey.shade700)
+    )
   );
 
   static final ThemeData darkTheme = ThemeData(
-    brightness: Brightness.dark,
-    primarySwatch: Colors.blue,
+    useMaterial3: true,
+    colorScheme: ColorScheme.fromSeed(
+      brightness: Brightness.dark,
+      seedColor: Colors.lightBlue.shade700,
+    ).copyWith(onPrimary: Colors.white),
     scaffoldBackgroundColor: Colors.black,
     appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.blueGrey,
+      backgroundColor: Colors.blue,
       foregroundColor: Colors.white,
     ),
-    cardColor: Colors.grey[900],
-    dividerColor: Colors.grey[700],
-    textTheme: const TextTheme(
-      titleMedium: TextStyle(color: Colors.white, fontSize: 18),
-      bodyMedium: TextStyle(color: Colors.white70, fontSize: 16),
-      bodyLarge: TextStyle(color: Colors.white, fontSize: 18),
+    cardTheme: CardThemeData(
+      surfaceTintColor: Colors.transparent,
+      color: Colors.white,
+      elevation: 2,
+      margin: EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: Colors.white,
+      prefixIconColor: Colors.black,
+      suffixIconColor: Colors.black,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide.none,
+      ),
+    ),
+    dividerColor: Colors.grey[700],
+    textTheme: GoogleFonts.interTextTheme().apply(
+      bodyColor: Colors.white,
+      displayColor: Colors.white,
+    ),
+    datePickerTheme: DatePickerThemeData(
+      backgroundColor: Colors.black,
+      headerBackgroundColor: Colors.black,
+      headerForegroundColor: Colors.white,
+      headerHelpStyle: GoogleFonts.inter(fontSize: 12, color: Colors.grey),
+      headerHeadlineStyle: GoogleFonts.inter(fontSize: 16, color: Colors.white),
+      dayStyle: GoogleFonts.inter(fontSize: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+      ),
+    ),
+    iconTheme: IconThemeData(color: Colors.black),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return Colors.lightBlue;
+        return Colors.grey.shade300;
+      }),
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return Colors.lightBlue.withAlpha(50);
+        return Colors.grey.shade700;
+      }),
+      trackOutlineColor: WidgetStatePropertyAll(Colors.grey.shade700)
+    )
   );
 
   static Color getOptimalTextColor(Color backgroundColor) {
@@ -46,7 +137,7 @@ class AppTheme {
 
 class ThemeController extends GetxController {
   ThemeMode theme = ThemeMode.light;
-  
+
   Future<void> loadLocalTheme() async {
     final preference = await SharedPreferences.getInstance();
     bool? isDarkMode = preference.getBool('isDarkMode');

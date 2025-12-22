@@ -21,7 +21,8 @@ class LabelRepository extends UserRepository<Label> {
     data.remove('id');
 
     // Create the label in the database.
-    final documentReference = await collection.addOfflineSafe(data);
+    final documentReference = collection.doc();
+    await collection.doc(documentReference.id).setOfflineSafe(data);
     entity = entity.copyWith(id: documentReference.id);
     return entity;
   }

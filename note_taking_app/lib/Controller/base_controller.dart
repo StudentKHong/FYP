@@ -19,6 +19,7 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
   late final Rxn<ComponentSort<T>> currentSort = Rxn<ComponentSort<T>>();
   var content = Rxn<T>();
   var errorMessage = "".obs;
+  var isLoading = false.obs;
 
   StreamSubscription<List<T>>? watchAllSubscription;
   StreamSubscription<int>? watchAllCountSubscription;
@@ -79,20 +80,36 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
   }
 
   void getAll() {
+    isLoading.value = true;
     errorMessage.value = "";
     watchAllSubscription?.cancel();
-    watchAllSubscription = repository.watchAll().listen((data) {
-      list.assignAll(data);
-      filteredList.assignAll(data);
-    }, onError: (ex) => errorMessage.value = ex.toString());
+    watchAllSubscription = repository.watchAll().listen(
+      (data) {
+        list.assignAll(data);
+        filteredList.assignAll(data);
+        isLoading.value = false;
+      },
+      onError: (ex) {
+        errorMessage.value = ex.toString();
+        isLoading.value = false;
+      },
+    );
   }
 
   void getAllCount() {
+    isLoading.value = true;
     errorMessage.value = "";
     watchAllCountSubscription?.cancel();
-    watchAllCountSubscription = repository.watchAllCount().listen((count) {
-      totalCount.value = count;
-    }, onError: (ex) => errorMessage.value = ex.toString());
+    watchAllCountSubscription = repository.watchAllCount().listen(
+      (count) {
+        totalCount.value = count;
+        isLoading.value = false;
+      },
+      onError: (ex) {
+        errorMessage.value = ex.toString();
+        isLoading.value = false;
+      },
+    );
   }
 
   void resetFilter() {
@@ -109,6 +126,7 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
 
   void filter() {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       if (currentFilter.value == null || currentFilter.value!.isEmpty) {
         return;
@@ -120,6 +138,8 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
       );
     } catch (e) {
       errorMessage.value = "Something went wrong";
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -137,6 +157,7 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
 
   void sort() {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       if (currentSort.value == null || currentSort.value!.isEmpty) {
         return;
@@ -148,11 +169,14 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
       }
     } catch (e) {
       errorMessage.value = "Something went wrong";
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> search(String keyword) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       final cleanedKeyword = keyword.toLowerCase();
 
@@ -168,11 +192,14 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
       filteredList.assignAll(searchResult);
     } catch (e) {
       errorMessage.value = "Something went wrong";
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<T?> create(T entity) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       final newEntity = await repository.create(entity);
       list.insert(0, newEntity);
@@ -195,11 +222,14 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
         errorMessage.value = "Something went wrong";
       }
       return null;
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> edit(List<T> entities, {bool pushToTop = true}) async {
     try {
+      isLoading.value = true;
       // Update component in Firebase Firestore.
       errorMessage.value = "";
       final newEntities = await repository.edit(entities);
@@ -240,17 +270,22 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
       }
     } catch (e) {
       errorMessage.value = e.toString();
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> delete(List<String> componentIds) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       await repository.delete(componentIds);
       list.removeWhere((item) => componentIds.contains(item.id));
       filteredList.removeWhere((item) => componentIds.contains(item.id));
     } catch (ex) {
       errorMessage.value = "Failed to delete notes.";
+    } finally {
+      isLoading.value = false;
     }
   }
 }

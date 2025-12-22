@@ -66,15 +66,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ],
             ),
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF2193b0), Color(0xFF6dd5ed)],
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-          ),
-        ),
-      ),
       actions: replaceDefaultActions
           ? (actions ?? [])
           : [
@@ -120,55 +111,16 @@ class _HamburgerMenuState extends State<HamburgerMenu> {
   late final NoteController archivedNotesController;
   late final TaskController archivedTasksController;
 
-  // late final int notificationCount;
-  // late final List<Map<String, dynamic>> noteLabels;
-  // late final int noteTotalCount;
-  // late final List<Map<String, dynamic>> taskLabels;
-  // late final int taskTotalCount;
-
   @override
   void initState() {
     super.initState();
 
-    countController.getAllNotificationsCount();
-    labelController.getNoteLabels();
-    countController.getAllNotesCount();
-    labelController.getTaskLabels();
-    countController.getAllTasksCount();
-    countController.getAllGroupsCount();
     archivedNotesController = Get.put(NoteController(), tag: 'notes_archived');
     archivedTasksController = Get.put(TaskController(), tag: 'tasks_archived');
 
     archivedNotesController.getArchived();
     archivedTasksController.getArchived();
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   noteController.getArchived();
-    //   taskController.getArchived();
-    // });
-
-    // _loadNotificationCount();
-    // _loadNoteData();
-    // _loadTaskData();
   }
-
-  // Future<void> _loadNotificationCount() async {
-  //   await countController.getAllNotificationsCount();
-  //   notificationCount = countController.notificationCount.value;
-  // }
-
-  // Future<void> _loadNoteData() async {
-  //   await countController.getNoteLabels();
-  //   noteLabels = countController.noteLabels;
-  //   await countController.getAllNotesCount();
-  //   noteTotalCount = countController.notesCount.value;
-  // }
-
-  // Future<void> _loadTaskData() async {
-  //   await countController.getTaskLabels();
-  //   taskLabels = countController.taskLabels;
-  //   await countController.getAllNotesCount();
-  //   noteTotalCount = countController.notesCount.value;
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -276,6 +228,7 @@ class NavigationButtons {
     String? trailingText,
     Color? tileColor,
     VoidCallback? onTap,
+    bool hideTrailing = false
   }) {
     final backgroundColor = tileColor ?? Colors.white;
     final textColor = AppTheme.getOptimalTextColor(backgroundColor);
@@ -289,7 +242,7 @@ class NavigationButtons {
           context,
         ).textTheme.bodyMedium!.copyWith(color: textColor),
       ),
-      trailing: Row(
+      trailing: hideTrailing ? null : Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -561,8 +514,7 @@ class AdditionalOptions {
     bool hideShare = false,
     void Function(List updatedItems)? onUpdate,
   }) {
-    if (onUpdate == null ||
-        (notes == null && tasks == null && labels == null)) {
+    if (notes == null && tasks == null && labels == null) {
       return [];
     }
 
@@ -574,17 +526,19 @@ class AdditionalOptions {
         onSelected: (value) async {
           switch (value) {
             case 'pin':
+              if (onUpdate == null) break;
               if (notes != null) {
                 onUpdate(
-                  notes.map((item) => item.copyWith(isPinned: true)).toList(),
+                  notes.map((item) => item.copyWith(isPinned: true, isArchived: false)).toList(),
                 );
               } else if (tasks != null) {
                 onUpdate(
-                  tasks.map((item) => item.copyWith(isPinned: true)).toList(),
+                  tasks.map((item) => item.copyWith(isPinned: true, isArchived: false)).toList(),
                 );
               }
               break;
             case 'unpin':
+              if (onUpdate == null) break;
               if (notes != null) {
                 onUpdate(
                   notes.map((item) => item.copyWith(isPinned: false)).toList(),
@@ -596,17 +550,19 @@ class AdditionalOptions {
               }
               break;
             case 'archive':
+              if (onUpdate == null) break;
               if (notes != null) {
                 onUpdate(
-                  notes.map((item) => item.copyWith(isArchived: true)).toList(),
+                  notes.map((item) => item.copyWith(isArchived: true, isPinned: false)).toList(),
                 );
               } else if (tasks != null) {
                 onUpdate(
-                  tasks.map((item) => item.copyWith(isArchived: true)).toList(),
+                  tasks.map((item) => item.copyWith(isArchived: true, isPinned: false)).toList(),
                 );
               }
               break;
             case 'unarchive':
+              if (onUpdate == null) break;
               if (notes != null) {
                 onUpdate(
                   notes
@@ -643,20 +599,23 @@ class AdditionalOptions {
                       ?.map((item) => item.id)
                       .whereType<String>()
                       .toList();
-                  print("Task id: ${tasks?.first.id}");
-                  print("isForShared: $isForShared");
-                  print("noteIds: $noteIds");
-                  print("taskIds: $taskIds");
-                  print("labelIds: $labelIds");
-                  print("controller type: ${controller.runtimeType}");
-                  print("groupId: $groupId, groupType: $groupType");
+
+                  print("Note ids length (preparing delete): ${noteIds?.length}");
+                  print("Task ids length (preparing delete): ${taskIds?.length}");
+                  // print("Task id: ${tasks?.first.id}");
+                  // print("isForShared: $isForShared");
+                  // print("noteIds: $noteIds");
+                  // print("taskIds: $taskIds");
+                  // print("labelIds: $labelIds");
+                  // print("controller type: ${controller.runtimeType}");
+                  // print("groupId: $groupId, groupType: $groupType");
 
                   if (isForShared &&
-                      noteIds != null &&
-                      controller is NoteController) {
+                      noteIds != null) {
                     if (groupId != null && groupType != null) {
                       print("Delete Shared Notes.");
-                      await controller.deleteShared(
+                      final noteController = Get.find<NoteController>(tag: 'group_${groupId}_note');
+                      await noteController.deleteShared(
                         noteIds,
                         groupId,
                         groupType,
@@ -664,11 +623,11 @@ class AdditionalOptions {
                     }
                   }
                   if (isForShared &&
-                      taskIds != null &&
-                      controller is TaskController) {
+                      taskIds != null) {
                     if (groupId != null && groupType != null) {
                       print("Delete Shared Tasks.");
-                      await controller.deleteShared(
+                      final taskController = Get.find<TaskController>(tag: 'group_${groupId}_task');
+                      await taskController.deleteShared(
                         taskIds,
                         groupId,
                         groupType,
@@ -706,36 +665,42 @@ class AdditionalOptions {
                     "Success",
                     "Successfully delete selections.",
                   );
-                  Get.back();
                 },
               );
               break;
             case 'share':
-              final content = contentController?.document.toPlainText().trim();
-              if (notes != null) {
-                onUpdate(
-                  notes
-                      .map((item) => item.copyWith(searchableContent: content))
-                      .toList(),
-                );
-              } else if (tasks != null) {
-                if (descriptionController != null) {
+              if (onUpdate != null) {
+                final content = contentController?.document
+                    .toPlainText()
+                    .trim();
+                if (notes != null) {
                   onUpdate(
-                    tasks
+                    notes
                         .map(
-                          (item) => item.copyWith(
-                            description: descriptionController.text,
-                          ),
+                          (item) => item.copyWith(searchableContent: content),
                         )
                         .toList(),
                   );
+                } else if (tasks != null) {
+                  if (descriptionController != null) {
+                    onUpdate(
+                      tasks
+                          .map(
+                            (item) => item.copyWith(
+                              description: descriptionController.text,
+                            ),
+                          )
+                          .toList(),
+                    );
+                  }
                 }
               }
 
+              final roleController = Get.find<RoleController>();
               buildConfirmationMessage(
                 context: context,
                 title: 'Share Confirmation',
-                buttonText1: 'Share within app',
+                buttonText1: (roleController.hasPermission(PermissionType.createShared) && isForShared) || !isForShared ? 'Share within app': null,
                 colorForButton1: Colors.grey,
                 buttonText2: 'Share outside app',
                 colorForButton2: Colors.grey,

@@ -13,7 +13,6 @@ class NoteController extends Controller<Note> {
   final NoteRepository _noteRepository;
   final LabelController _labelController;
 
-  StreamSubscription<List<Label>>? _watchLabelSubscription;
   StreamSubscription<List<Note>>? _watchByLabelSubscription;
   StreamSubscription<List<Note>>? _watchByGroupSubscription;
 
@@ -34,13 +33,12 @@ class NoteController extends Controller<Note> {
       watchAllSubscription?.cancel();
       watchAllCountSubscription?.cancel();
       watchByIdSubscription?.cancel();
-      _watchLabelSubscription?.cancel();
       _watchByLabelSubscription?.cancel();
       _watchByGroupSubscription?.cancel();
 
       if (user != null) {
-        _labelController.getNoteLabels();
         getAll();
+        getAllCount();
       } else {
         list.clear();
         filteredList.clear();
@@ -50,7 +48,6 @@ class NoteController extends Controller<Note> {
 
   @override
   void onClose() {
-    _watchLabelSubscription?.cancel();
     _watchByLabelSubscription?.cancel();
     _watchByGroupSubscription?.cancel();
     super.onClose();
@@ -86,6 +83,7 @@ class NoteController extends Controller<Note> {
   @override
   Future<Note?> create(Note entity) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
 
       String? createdLabelId;
@@ -127,12 +125,15 @@ class NoteController extends Controller<Note> {
         errorMessage.value = "Something went wrong";
       }
       return null;
+    } finally {
+      isLoading.value = false;
     }
   }
 
   @override
   Future<void> delete(List<String> componentIds) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       final notes = list
           .where((note) => componentIds.contains(note.id))
@@ -157,20 +158,24 @@ class NoteController extends Controller<Note> {
       filteredList.removeWhere((item) => noteIds.contains(item.id));
     } catch (ex) {
       errorMessage.value = "Failed to delete notes.";
+    } finally {
+      isLoading.value = false;
     }
   }
 
   @override
   Future<void> getAll() async {
-    try {
-      errorMessage.value = "";
-      // Fetch notes.
-      _watchByLabelSubscription?.cancel();
-      activeLabelId.value = '';
-      watchAllSubscription?.cancel();
+    // try {
+    isLoading.value = true;
+    errorMessage.value = "";
+    // Fetch notes.
+    _watchByLabelSubscription?.cancel();
+    activeLabelId.value = '';
+    watchAllSubscription?.cancel();
 
-      final labels = _labelController.noteLabels;
-      watchAllSubscription = _noteRepository.watchAll().listen((notes) {
+    final labels = _labelController.noteLabels;
+    watchAllSubscription = _noteRepository.watchAll().listen(
+      (notes) {
         final notesWithLabels = notes.map((note) {
           final labelId = note.label?.id;
           return labelId != null && labels.any((label) => label.id == labelId)
@@ -182,26 +187,33 @@ class NoteController extends Controller<Note> {
 
         list.assignAll(notesWithLabels);
         filteredList.assignAll(notesWithLabels);
-      });
+        isLoading.value = false;
+      },
+      onError: (ex) {
+        errorMessage.value = ex.toString();
+        isLoading.value = false;
+      },
+    );
 
-      // Refilter if current filter exists.
-      if (currentFilter.value != null &&
-          currentFilter.value!.labelNames != null) {
-        filter();
-      }
-      print(
-        'Initial List: ${list.map((e) => '${e.id}:${e.isPinned}').toList()}',
-      );
-      print(
-        'Initial Filtered List: ${filteredList.map((e) => '${e.id}:${e.isPinned}').toList()}',
-      );
-    } catch (ex) {
-      errorMessage.value = "Something went wrong.";
+    // Refilter if current filter exists.
+    if (currentFilter.value != null &&
+        currentFilter.value!.labelNames != null) {
+      filter();
     }
+    // print('Initial List: ${list.map((e) => '${e.id}:${e.isPinned}').toList()}');
+    // print(
+    //   'Initial Filtered List: ${filteredList.map((e) => '${e.id}:${e.isPinned}').toList()}',
+    // );
+    // } catch (ex) {
+    //   errorMessage.value = "Something went wrong.";
+    // } finally {
+    //   isLoading.value = false;
+    // }
   }
 
   Future<void> getByGroup(String groupId, String groupType) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       // Fetch notes.
       _watchByGroupSubscription?.cancel();
@@ -221,6 +233,8 @@ class NoteController extends Controller<Note> {
       }
     } catch (ex) {
       errorMessage.value = ex.toString();
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -236,18 +250,9 @@ class NoteController extends Controller<Note> {
     }, onError: (_) => errorMessage.value = "Failed to fetch notes.");
   }
 
-  // Future<void> getRecent() async {
-  //   try {
-  //     errorMessage.value = "";
-  //     final recentNotes = await _noteRepository.getRecentNotes();
-  //     list.assignAll(recentNotes);
-  //   } catch (ex) {
-  //     errorMessage.value = "Something went wrong.";
-  //   }
-  // }
-
   Future<int?> getCountByLabel(String labelId) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       int? size;
       size = await _noteRepository.getNoteCount(labelId);
@@ -255,6 +260,8 @@ class NoteController extends Controller<Note> {
     } catch (ex) {
       errorMessage.value = "Something went wrong";
       return null;
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -264,6 +271,7 @@ class NoteController extends Controller<Note> {
     String groupType,
   ) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       groupContents = groupContents.map((content) {
         final labelName = content.label?.name;
@@ -274,23 +282,26 @@ class NoteController extends Controller<Note> {
           isPinned: false,
         );
       }).toList();
-      final List<Note> createdGroupContents =
-          await (repository as NoteRepository).shareMultiple(
-            groupContents,
-            groupId,
-            groupType,
-          );
-      filteredList.addAll(createdGroupContents);
-      _sortLists(list: filteredList);
-      list.addAll(createdGroupContents);
-      _sortLists(list: list);
+      // final List<Note> createdGroupContents =
+      await (repository as NoteRepository).shareMultiple(
+        groupContents,
+        groupId,
+        groupType,
+      );
+      // filteredList.addAll(createdGroupContents);
+      // _sortLists(list: filteredList);
+      // list.addAll(createdGroupContents);
+      // _sortLists(list: list);
     } catch (ex) {
       errorMessage.value = ex.toString();
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> editShared(Note note, String groupId, String groupType) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       final newEntity = await (repository as NoteRepository).editShared(
         note,
@@ -302,6 +313,8 @@ class NoteController extends Controller<Note> {
       pushItemToTop(entity: newEntity, forList: true, forFilteredList: true);
     } catch (ex) {
       errorMessage.value = ex.toString();
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -311,6 +324,7 @@ class NoteController extends Controller<Note> {
     String groupType,
   ) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       // Delete selected shared notes.
       final notes = list.where((note) => noteIds.contains(note.id)).toList();
@@ -340,11 +354,14 @@ class NoteController extends Controller<Note> {
       filteredList.removeWhere((item) => deletedNoteIds.contains(item.id));
     } catch (ex) {
       errorMessage.value = "Failed to delete notes.";
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> setLabelToNotes(String labelId, List<String> noteIds) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
 
       // Set label.
@@ -370,7 +387,19 @@ class NoteController extends Controller<Note> {
       }
     } catch (ex) {
       errorMessage.value = "Something went wrong";
+    } finally {
+      isLoading.value = false;
     }
+  }
+
+  Future<void> removeLabelFromNotes(String labelId) async {
+    final notesToUpdate = list.map((item) {
+      if (item.label?.id == labelId) {
+        return item.copyWith(label: null, replaceLabel: true);
+      }
+      return item;
+    }).toList();
+    await edit(notesToUpdate, pushToTop: false);
   }
 
   Future<void> togglePinStatus(Note note) async {
@@ -406,6 +435,7 @@ class NoteController extends Controller<Note> {
   }
 
   void getArchived() {
+    isLoading.value = true;
     errorMessage.value = "";
     watchAllSubscription?.cancel();
     watchAllSubscription = (repository as NoteRepository)
@@ -424,9 +454,11 @@ class NoteController extends Controller<Note> {
             }).toList();
 
             filteredList.assignAll(notesWithLabels);
+            isLoading.value = false;
           },
           onError: (ex) {
             errorMessage.value = ex.toString();
+            isLoading.value = false;
           },
         );
   }

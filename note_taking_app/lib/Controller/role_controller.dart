@@ -6,6 +6,7 @@ enum PermissionType {
   viewClass,
   createClass,
   createShared,
+  deleteShared,
   editShared,
   viewCreateTeam
 }
@@ -17,6 +18,7 @@ class RoleController {
     PermissionType.viewClass: [UserType.student, UserType.teacher],
     PermissionType.createClass: [UserType.teacher],
     PermissionType.createShared: [UserType.teacher, UserType.worker],
+    PermissionType.deleteShared: [UserType.teacher, UserType.worker],
     PermissionType.editShared: [UserType.teacher, UserType.worker],
     PermissionType.viewCreateTeam: [UserType.worker]
   };

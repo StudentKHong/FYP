@@ -465,6 +465,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                     if (list.length == 1) {
                       setState(() {
                         note = list.first;
+                        hasChanged = true;
                       });
                     }
                   },
@@ -504,7 +505,8 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                               widget.isLabelReadOnly ||
                               widget.mode == Mode.view,
                           onTagsChanged: (value) {
-                            if (!widget.isLabelReadOnly) {
+                            if (!widget.isLabelReadOnly &&
+                                widget.mode != Mode.view) {
                               setState(() {
                                 selectedLabel = value;
                                 updateHasChanged();
@@ -514,8 +516,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                           withGenerateLabelSwitch: widget.mode != Mode.view
                               ? true
                               : false,
-                          contentToSuggestLabel: contentController.document
-                              .toPlainText(),
+                          contentController: contentController,
                           initialSwitchState: toggleEnabled,
                           onToggled: (value) => setState(() {
                             toggleEnabled = value;
@@ -548,6 +549,18 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                       scrollController: quillScrollController,
                       controller: contentController,
                       config: QuillEditorConfig(
+                        placeholder: "Content",
+                        customStyles: DefaultStyles(
+                          placeHolder: DefaultTextBlockStyle(
+                            Theme.of(context).textTheme.bodyMedium!.copyWith(
+                              color: Colors.grey,
+                            ),
+                            HorizontalSpacing(0, 0),
+                            VerticalSpacing(0, 0),
+                            VerticalSpacing(0, 0),
+                            null,
+                          ),
+                        ),
                         showCursor: widget.mode != Mode.view,
                         autoFocus: false,
                         embedBuilders: [
@@ -731,7 +744,11 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                     ValueListenableBuilder(
                       valueListenable: numberOfCharacters,
                       builder: (_, value, _) {
-                        return Text('${value - 1}/$maxLength');
+                        return Text(
+                          '${value - 1}/$maxLength',
+                          style: Theme.of(context).textTheme.bodySmall!
+                              .copyWith(color: Colors.grey.shade700),
+                        );
                       },
                     ),
                 ]),
@@ -775,9 +792,11 @@ class AttachmentExpandableButton extends StatelessWidget {
               children: [
                 Text(
                   count.toString(),
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium!.copyWith(color: Colors.black),
                 ),
-                Icon(Icons.first_page),
+                Icon(Icons.first_page, color: Colors.black),
               ],
             ),
           ),

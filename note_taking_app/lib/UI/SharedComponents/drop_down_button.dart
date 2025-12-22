@@ -22,7 +22,9 @@ class CustomDropDownBox extends StatelessWidget {
       Text(
         title,
         style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-          color: onChanged == null ? Colors.grey.shade400 : null,
+          color: onChanged == null
+              ? Colors.grey.shade400
+              : Theme.of(context).colorScheme.surface,
         ),
       ),
       DropdownButton2(

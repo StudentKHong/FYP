@@ -33,38 +33,7 @@ class _AddAttachmentScreenState extends State<AddAttachmentScreen> {
     final data = Get.arguments as Map<String, dynamic>;
     filterableEntity = data['entity'] as FilterableEntity?;
     attachmentController = data['controller'] as AttachmentController;
-    // controllerTag = filterableEntity?.id ?? "temp_id";
-
-    // if (!Get.isRegistered<AttachmentController>(tag: controllerTag)) {
-    //   attachmentController = Get.put(
-    //     AttachmentController(componentId: controllerTag),
-    //     tag: controllerTag,
-    //   );
-    // } else {
-    //   attachmentController = Get.find<AttachmentController>(
-    //     tag: controllerTag,
-    //   );
-    // }
-    // if (!Get.isRegistered<AttachmentRepository>(tag: controllerTag)) {
-    //   Get.put(
-    //     AttachmentRepository(componentId: controllerTag),
-    //     tag: controllerTag,
-    //   );
-    // }
   }
-
-  // @override
-  // void dispose() {
-  //   if (filterableEntity != null && filterableEntity!.id != null) {
-  //     print(
-  //       "Disposed Attachment Controller's Tag (In Add Attachment): $controllerTag",
-  //     );
-  //     Get.delete<AttachmentController>(tag: controllerTag);
-  //     Get.delete<AttachmentRepository>(tag: controllerTag);
-  //   }
-
-  //   super.dispose();
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -115,7 +84,7 @@ class _AddAttachmentScreenState extends State<AddAttachmentScreen> {
                     values: [ComponentType.note, ComponentType.task],
                     indicatorSize: Size.fromWidth(100),
                     indicatorAnimationType: AnimationType.onSelected,
-                    style: ToggleStyle(indicatorColor: Colors.grey),
+                    style: ToggleStyle(indicatorColor: Theme.of(context).colorScheme.primary),
                     iconBuilder: (value) {
                       final isSelected = value == selectedType;
                       return Text(
@@ -123,7 +92,7 @@ class _AddAttachmentScreenState extends State<AddAttachmentScreen> {
                         style: TextStyle(
                           color: isSelected
                               ? Theme.of(context).textTheme.bodyMedium!.color
-                              : Colors.grey,
+                              : Colors.grey.shade700,
                           fontWeight: FontWeight.bold,
                         ),
                       );
@@ -146,14 +115,19 @@ class _AddAttachmentScreenState extends State<AddAttachmentScreen> {
                   AttachmentComponent? result;
                   if (selectedType == ComponentType.note) {
                     result =
-                        await Get.to(NoteDetailScreen(mode: Mode.create, hideAttachmentButton: true,))
+                        await Get.to(
+                              NoteDetailScreen(
+                                mode: Mode.create,
+                                hideAttachmentButton: true,
+                              ),
+                            )
                             as AttachmentComponent?;
                   } else {
                     result =
                         await Get.toNamed(Routes.createTask)
                             as AttachmentComponent?;
                   }
-                  
+
                   // Create temporary attachment list if base entity not identified.
                   // Otherwise, create attachments in Firebase Firestore.
                   if (result != null) {
@@ -169,23 +143,9 @@ class _AddAttachmentScreenState extends State<AddAttachmentScreen> {
                     } else {
                       attachmentController.createTemporary([result]);
                     }
-                    // if (attachmentController.errorMessage.value.isNotEmpty) {
-                    //   CustomDialog.showError(
-                    //     "Error",
-                    //     attachmentController.errorMessage.value,
-                    //   );
-                    // } else {
-                    //   CustomDialog.showSuccess(
-                    //     "Success",
-                    //     "Successfully create attachment"
-                    //   );
-                    // }
                   }
                 },
-                child: Text(
-                  "Create New",
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
+                child: Text("Create New"),
               ),
             ),
             SizedBox(
@@ -237,7 +197,6 @@ class _AddAttachmentScreenState extends State<AddAttachmentScreen> {
                 },
                 child: Text(
                   "Select From Existing",
-                  style: Theme.of(context).textTheme.bodyLarge,
                 ),
               ),
             ),

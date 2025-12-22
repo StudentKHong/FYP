@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart';
+import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/label_controller.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
+import 'package:note_taking_app/UI/SharedComponents/loading_state.dart';
 import 'package:note_taking_app/UI/SharedComponents/search.dart';
 import 'package:note_taking_app/UI/SharedComponents/toggle_button.dart';
 
@@ -16,7 +19,9 @@ class CustomLabelEditor extends StatefulWidget {
   final bool withGenerateLabelSwitch;
   final bool initialSwitchState;
   final ValueChanged<bool> onToggled;
-  final String? contentToSuggestLabel;
+  final QuillController? contentController;
+  final TextEditingController? textContentController;
+  // final String? contentToSuggestLabel;
   final Future<void> Function()? onEditorOpened;
 
   const CustomLabelEditor({
@@ -29,7 +34,9 @@ class CustomLabelEditor extends StatefulWidget {
     required this.withGenerateLabelSwitch,
     this.initialSwitchState = false,
     required this.onToggled,
-    this.contentToSuggestLabel,
+    this.contentController,
+    this.textContentController,
+    // this.contentToSuggestLabel,
     this.onEditorOpened,
   });
 
@@ -42,13 +49,14 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
   final TextEditingController _searchController = TextEditingController();
   late Label? selectedLabel;
   // bool isProgrammaticallyChanged = false;
-  bool generateLabelEnabled = false;
+  late RxBool generateLabelEnabled;
 
   @override
   void initState() {
     super.initState();
 
     selectedLabel = widget.initialLabel;
+    generateLabelEnabled = (widget.initialSwitchState).obs;
     print("INITIAL SWITCH STATE: ${widget.initialSwitchState}");
     // textController = TextEditingController(text: selectedLabel?.name);
     _loadLabels();
@@ -58,15 +66,15 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
   void didUpdateWidget(covariant CustomLabelEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.initialSwitchState != widget.initialSwitchState) {
-      setState(() {
-        generateLabelEnabled = widget.initialSwitchState;
-      });
+    // if (oldWidget.initialSwitchState != widget.initialSwitchState) {
+    //   setState(() {
+    //     generateLabelEnabled = widget.initialSwitchState;
+    //   });
 
-      if (generateLabelEnabled) {
-        _loadSuggested();
-      }
-    }
+    //   if (generateLabelEnabled) {
+    //     _loadSuggested();
+    //   }
+    // }
   }
 
   Future<void> _loadLabels() async {
@@ -82,35 +90,47 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
   }
 
   Future<void> _loadSuggested() async {
-    if (widget.initialSwitchState &&
-        widget.labelController.suggestedLabels.isEmpty &&
-        widget.contentToSuggestLabel != null) {
-      await widget.labelController.generateLabel(
-        widget.type,
-        widget.contentToSuggestLabel!,
-      );
+    final content =
+        widget.contentController?.document.toPlainText().trim() ??
+        widget.textContentController?.text ??
+        "";
+    final suggestedList = widget.labelController.suggestedLabels;
+    print("--- [DEBUG] _loadSuggested check ---");
+    print("1. generateLabelEnabled: $generateLabelEnabled");
+    print(
+      "2. suggestedLabels.isEmpty: ${suggestedList.isEmpty} (Current count: ${suggestedList.length})",
+    );
+    print("3. content.isNotEmpty: ${content.isNotEmpty}");
+
+    if (generateLabelEnabled.value && content.isNotEmpty) {
+      await widget.labelController.generateLabel(widget.type, content);
     }
   }
 
   Widget _buildBottomSheet({
-    required List<Label> existing,
-    required List<Label> suggested,
     required VoidCallback onSearch,
     required void Function(void Function()) modalSetState,
   }) {
-    final query = _searchController.text.toLowerCase();
-    final filteredExisting = existing
-        .where((label) => label.name.toLowerCase().contains(query))
-        .toList();
+    final labelController = widget.labelController;
 
-    final filteredSuggestion = suggested
-        .where(
-          (label) =>
-              label.name.toLowerCase().contains(query) &&
-              !existing.any((existing) => existing.name == label.name),
-        )
-        .toList();
+    final newSuggestions = labelController.suggestedLabels;
 
+    final content =
+        widget.contentController?.document.toPlainText().trim() ??
+        widget.textContentController?.text ??
+        "";
+
+    // final filteredSuggestion = query.isEmpty
+    //     ? newSuggestions
+    //     : newSuggestions
+    //           .where(
+    //             (label) =>
+    //                 label.name.toLowerCase().contains(query) &&
+    //                 !existingLabels.any(
+    //                   (existing) => existing.name == label.name,
+    //                 ),
+    //           )
+    //           .toList();
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.5,
@@ -123,27 +143,71 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (widget.withGenerateLabelSwitch)
-                _buildGenerateLabelSwitch(modalSetState: modalSetState),
+                Obx(
+                  () => CustomSwitch(
+                    title: 'Generate Label',
+                    textColor: Theme.of(context).colorScheme.onPrimary,
+                    infoDescription:
+                        "Generate label using Artificial Intelligence (AI). Do not enable this if note contains personal information.",
+                    isTitleLeading: true,
+                    switchSize: Scale.medium,
+                    isToggled: generateLabelEnabled.value,
+                    onChanged: (value) async {
+                      // Update UI to display the suggested label.
+                      generateLabelEnabled.value = value;
+                      widget.onToggled.call(value);
+
+                      if (value) {
+                        await _loadSuggested();
+                      }
+                    },
+                    layout: LayoutMode.listTile,
+                  ),
+                ),
               Divider(),
               CustomSearchBar(
                 searchController: _searchController,
                 onSearch: (_) => onSearch(),
               ),
-              _buildCreateLabelOption(existing: existing, suggested: suggested),
-              const SizedBox(height: 10),
-              ..._buildSection(
-                title: "Existing Labels",
-                list: filteredExisting,
-                chipAvatar: Icon(Icons.label, color: Colors.black),
-                chipColor: Colors.green.shade300,
-              ),
-              const SizedBox(height: 10),
-              ..._buildSection(
-                title: "Suggested Labels",
-                list: filteredSuggestion,
-                chipAvatar: Icon(Icons.auto_awesome, color: Colors.black),
-                chipColor: Colors.blue.shade300,
-              ),
+              Obx(() {
+                final existingLabels = widget.type == ComponentType.note
+                    ? labelController.noteLabels
+                    : labelController.taskLabels;
+                final query = _searchController.text.toLowerCase();
+                final filteredExisting = existingLabels
+                    .where((label) => label.name.toLowerCase().contains(query))
+                    .toList();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildCreateLabelOption(
+                      existing: existingLabels,
+                      suggested: newSuggestions,
+                    ),
+                    const SizedBox(height: 10),
+                    ..._buildSection(
+                      title: "Existing Labels",
+                      list: filteredExisting,
+                      chipAvatar: Icon(Icons.label, color: Colors.black),
+                      chipColor: Colors.green.shade300,
+                      isLoading: false,
+                    ),
+                    const SizedBox(height: 10),
+                    if (generateLabelEnabled.value && content.isNotEmpty)
+                      ..._buildSection(
+                        title: "Suggested Labels",
+                        list: labelController.suggestedLabels,
+                        chipAvatar: Icon(
+                          Icons.auto_awesome,
+                          color: Colors.black,
+                        ),
+                        chipColor: Colors.blue.shade300,
+                        isLoading: labelController.isLoading.value,
+                      ),
+                  ],
+                );
+              }),
             ],
           ),
         );
@@ -190,7 +254,7 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
                   id: UniqueKey().toString(),
                   name: keyword,
                   type: widget.type,
-                  count: 0,
+                  count: 1,
                 );
                 setState(() {
                   selectedLabel = label;
@@ -212,85 +276,82 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
     required List<Label> list,
     required Widget chipAvatar,
     required Color chipColor,
+    required bool isLoading,
   }) {
     return [
-      if (list.isNotEmpty)
-        Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.bold),
-        ),
-      const SizedBox(height: 5),
-      Wrap(
-        children: list
-            .map(
-              (label) => ActionChip(
-                avatar: chipAvatar,
-                label: Text(
-                  label.name,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall!.copyWith(color: Colors.black),
-                ),
-                backgroundColor: chipColor,
-                onPressed: () {
-                  setState(() {
-                    selectedLabel = label;
-                  });
-                  widget.onTagsChanged?.call(label);
-                  Navigator.pop(context);
-                },
-              ),
-            )
-            .toList(),
+      Text(
+        title,
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.bold),
       ),
+      const SizedBox(height: 5),
+      if (isLoading)
+        LoadingIndicator(color: Theme.of(context).colorScheme.primary)
+      else
+        Wrap(
+          children: list
+              .map(
+                (label) => ActionChip(
+                  avatar: chipAvatar,
+                  label: Text(
+                    label.name,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall!.copyWith(color: Colors.black),
+                  ),
+                  backgroundColor: chipColor,
+                  onPressed: () {
+                    setState(() {
+                      selectedLabel = label;
+                    });
+                    widget.onTagsChanged?.call(label);
+                    Navigator.pop(context);
+                  },
+                ),
+              )
+              .toList(),
+        ),
     ];
   }
 
-  Widget _buildGenerateLabelSwitch({
-    required void Function(void Function()) modalSetState,
-  }) {
-    // final labelController = widget.labelController;
-    // final contentForLabelGeneration = widget.contentToSuggestLabel ?? "";
+  // Widget _buildGenerateLabelSwitch({
+  //   required void Function(void Function()) modalSetState,
+  // }) {
+  //   // final labelController = widget.labelController;
+  //   // final contentForLabelGeneration = widget.contentToSuggestLabel ?? "";
 
-    return CustomSwitch(
-      title: 'Generate Label',
-      infoDescription:
-          "Generate label using Artificial Intelligence (AI). Do not enable this if note contains personal information.",
-      isTitleLeading: true,
-      switchSize: Scale.medium,
-      isToggled: generateLabelEnabled,
-      onChanged: (value) async {
-        // Update UI to display the suggested label.
-        modalSetState(() {
-          generateLabelEnabled = value;
-          widget.onToggled.call(value);
-        });
-      },
-      layout: LayoutMode.listTile,
-    );
-  }
+  //   return CustomSwitch(
+  //     title: 'Generate Label',
+  //     textColor: Theme.of(context).colorScheme.onPrimary,
+  //     infoDescription:
+  //         "Generate label using Artificial Intelligence (AI). Do not enable this if note contains personal information.",
+  //     isTitleLeading: true,
+  //     switchSize: Scale.medium,
+  //     isToggled: generateLabelEnabled.value,
+  //     onChanged: (value) async {
+  //       // Update UI to display the suggested label.
+  //       generateLabelEnabled.value = value;
+  //       widget.onToggled.call(value);
+
+  //       if (value) {
+  //         await _loadSuggested();
+  //       }
+  //     },
+  //     layout: LayoutMode.listTile,
+  //   );
+  // }
 
   Future<void> _openLabelEditor() async {
     showModalBottomSheet(
       isScrollControlled: true,
       context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setState) {
-          final labelController = widget.labelController;
-          final existingLabels = widget.type == ComponentType.note
-              ? labelController.noteLabels
-              : labelController.taskLabels;
-          final newSuggestions = labelController.suggestedLabels;
-          return _buildBottomSheet(
-            existing: existingLabels,
-            suggested: newSuggestions,
-            onSearch: () => setState(() {}),
-            modalSetState: setState,
-          );
-        },
-      ),
+      builder: (_) {
+        return _buildBottomSheet(
+          onSearch: () => setState(() {}),
+          modalSetState: (_) => setState(() {}),
+        );
+      },
     );
 
     await widget.onEditorOpened?.call();
@@ -298,22 +359,23 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Label', style: Theme.of(context).textTheme.bodyMedium),
-        const SizedBox(height: 10),
-        ListTile(
-          tileColor: Colors.grey,
-          leading: Icon(Icons.label_outline),
-          title: Text(
-            selectedLabel?.name ?? "(None)",
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          trailing: widget.isReadOnly ? Icon(Icons.lock) : Icon(Icons.edit),
-          onTap: () => widget.isReadOnly ? null : _openLabelEditor(),
+    return Card(
+      margin: EdgeInsets.zero,
+      color: Colors.grey,
+      child: ListTile(
+        contentPadding: EdgeInsets.symmetric(horizontal: 20),
+        leading: Icon(Icons.label_outline, color: Colors.black),
+        title: Text(
+          (selectedLabel?.name.isNotEmpty ?? false)
+              ? selectedLabel!.name
+              : "(None)",
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
-      ],
+        trailing: widget.isReadOnly
+            ? Icon(Icons.lock, color: Colors.black)
+            : Icon(Icons.edit, color: Colors.black),
+        onTap: () => widget.isReadOnly ? null : _openLabelEditor(),
+      ),
     );
   }
 }

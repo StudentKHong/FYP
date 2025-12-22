@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:note_taking_app/Controller/auth_controller.dart';
 import 'package:note_taking_app/Controller/base_controller.dart';
 import 'package:note_taking_app/Model/Models/attachment_model.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
@@ -49,6 +48,7 @@ class AttachmentController extends Controller<Attachment> {
 
   Future<void> commitTemporaryAttachments(String componentId) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       final attachments = temporaryList
           .where((component) => component.id != null)
@@ -72,16 +72,21 @@ class AttachmentController extends Controller<Attachment> {
       temporaryList.clear();
     } catch (ex) {
       errorMessage.value = ex.toString();
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> createMultiple(List<Attachment> attachments) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       await _attachmentRepository.createMultiple(attachments);
       getList();
     } catch (ex) {
       errorMessage.value = "Failed to create attachments.";
+    } finally {
+      isLoading.value = false;
     }
   }
 

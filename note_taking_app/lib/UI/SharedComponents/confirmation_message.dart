@@ -5,10 +5,10 @@ Future<void> buildConfirmationMessage({
   required String title,
   String? content,
   Widget? contentWidget,
-  required String buttonText1,
-  required Color colorForButton1,
-  required String buttonText2,
-  required Color colorForButton2,
+  String? buttonText1,
+  Color? colorForButton1,
+  String? buttonText2,
+  Color? colorForButton2,
   required Future<void> Function() onTapOption1,
   Future<void> Function()? onTapOption2,
 }) async {
@@ -21,27 +21,28 @@ Future<void> buildConfirmationMessage({
           ? Text(content)
           : contentWidget ?? const SizedBox.shrink(),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          style: ButtonStyle(
-            backgroundColor: WidgetStateProperty.all(colorForButton1),
+        if (buttonText1 != null && colorForButton1 != null)
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.all(colorForButton1),
+            ),
+            child: Text(buttonText1),
           ),
-          child: Text(buttonText1),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          style: ButtonStyle(
-            backgroundColor: WidgetStateProperty.all(colorForButton2),
+        if (buttonText2 != null && colorForButton2 != null)
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.all(colorForButton2),
+            ),
+            child: Text(buttonText2),
           ),
-          child: Text(buttonText2),
-        ),
       ],
     ),
   );
   if (response) {
     await onTapOption1();
-  }
-  else if (!response && onTapOption2 != null) {
+  } else if (!response && onTapOption2 != null) {
     await onTapOption2();
   }
 }

@@ -1,11 +1,13 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 class CustomSearchBar extends StatefulWidget {
   final TextEditingController searchController;
   final void Function(String keyword) onSearch;
-  const CustomSearchBar({super.key, required this.searchController, required this.onSearch});
+  const CustomSearchBar({
+    super.key,
+    required this.searchController,
+    required this.onSearch,
+  });
 
   @override
   State<CustomSearchBar> createState() => _CustomSearchBarState();
@@ -13,10 +15,17 @@ class CustomSearchBar extends StatefulWidget {
 
 class _CustomSearchBarState extends State<CustomSearchBar> {
   // Timer? _debounce;
-  
+
   @override
   Widget build(BuildContext context) {
     return SearchBar(
+      backgroundColor: WidgetStatePropertyAll(Colors.white),
+      elevation: WidgetStatePropertyAll(2),
+      textStyle: WidgetStatePropertyAll(
+        Theme.of(context).textTheme.titleMedium!.copyWith(
+          color: Theme.of(context).colorScheme.surface,
+        ),
+      ),
       controller: widget.searchController,
       leading: Icon(Icons.search),
       hintText: 'Enter a keyword...',
@@ -26,10 +35,10 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
         // }
 
         // _debounce = Timer(Duration(milliseconds: 500), () {
-          widget.onSearch(value);
+        widget.onSearch(value);
         // });
       },
-      onSubmitted: widget.onSearch
+      onSubmitted: widget.onSearch,
     );
   }
 }

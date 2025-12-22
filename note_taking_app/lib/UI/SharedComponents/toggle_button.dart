@@ -8,6 +8,7 @@ enum LayoutMode { listTile, row }
 class CustomSwitch extends StatefulWidget {
   final String title;
   final String? infoDescription;
+  final Color textColor;
   final bool isTitleLeading;
   final Scale switchSize;
   final bool isToggled;
@@ -18,6 +19,7 @@ class CustomSwitch extends StatefulWidget {
     super.key,
     required this.title,
     this.infoDescription,
+    this.textColor = Colors.black,
     required this.isTitleLeading,
     this.switchSize = Scale.medium,
     required this.isToggled,
@@ -47,7 +49,12 @@ class _CustomSwitchState extends State<CustomSwitch> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(widget.title, style: Theme.of(context).textTheme.bodyMedium),
+        Text(
+          widget.title,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium!.copyWith(color: widget.textColor),
+        ),
         const SizedBox(width: 5),
         if (widget.infoDescription != null)
           CustomInfoButton(

@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:note_taking_app/Model/Models/enumeration.dart';
 
 enum TeamMemberRole {
   lead,

@@ -40,12 +40,6 @@ class CustomExtendedCard extends StatelessWidget {
       onLongPress: onLongPress,
       onTap: onTap,
       child: Card(
-        color: Colors.grey.shade400,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        elevation: 2,
         child: Padding(
           padding: const EdgeInsets.all(10),
           child: IntrinsicHeight(

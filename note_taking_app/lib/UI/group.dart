@@ -42,7 +42,10 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
   late TaskController _taskController;
   // final TextEditingController _searchController = TextEditingController();
 
-  final List<dynamic> _selectedItems = [];
+  final List<Note> _selectedNotes = [];
+  final List<Task> _selectedTasks = [];
+  final noteListKey = GlobalKey<ListScreenState<Note>>();
+  final taskListKey = GlobalKey<ListScreenState<Task>>();
 
   late SelectionMode _selectionMode;
   late TabController _tabController;
@@ -71,10 +74,10 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
       _loadListener();
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _currentIndex = _tabController.index;
-      _fetchData();
-    });
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _currentIndex = _tabController.index;
+    //   _fetchData();
+    // });
   }
 
   @override
@@ -85,7 +88,7 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
     Get.delete<NoteController>(tag: '${tag}_note');
     Get.delete<TaskController>(tag: '${tag}_task');
 
-    _tabController.removeListener(_loadListener);
+    // _tabController.removeListener(_loadListener);
     _tabController.dispose();
     super.dispose();
   }
@@ -95,81 +98,27 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
       setState(() {
         _currentIndex = _tabController.index;
       });
-      _fetchData();
+      // _fetchData();
     }
   }
 
-  Future<void> _fetchData() async {
-    final groupId = widget.groupObject.id;
-    final groupType = widget.groupObject.runtimeType.toString().toLowerCase();
+  // Future<void> _fetchData() async {
+  //   final groupId = widget.groupObject.id;
+  //   final groupType = widget.groupObject.runtimeType.toString().toLowerCase();
 
-    if (groupId != null) {
-      if (_currentIndex == 0) {
-        await _noteController.getByGroup(groupId, groupType);
-        if (_noteController.errorMessage.value.isNotEmpty) {
-          CustomDialog.showError("Error", _noteController.errorMessage.value);
-        }
-      } else {
-        await _taskController.getByGroup(groupId, groupType);
-        if (_taskController.errorMessage.value.isNotEmpty) {
-          CustomDialog.showError("Error", _taskController.errorMessage.value);
-        }
-      }
-    }
-  }
-
-  // // Delete the selected items in the database.
-  // Future<void> _deleteSelected() async {
-  //   if (_selectedItems.isEmpty) {
-  //     return;
-  //   }
-  //   buildConfirmationMessage(
-  //     context: context,
-  //     title: 'Delete Confirmation',
-  //     content: 'Are you sure you want to delete selections.',
-  //     buttonText1: 'Delete',
-  //     colorForButton1: Colors.red,
-  //     buttonText2: 'Cancel',
-  //     colorForButton2: Colors.grey,
-  //     onTapOption1: () async {
-  //       if (_selectedItems.isNotEmpty) {
-  //         List<String> noteIds = _selectedItems
-  //             .whereType<Note>()
-  //             .map((note) => note.id)
-  //             .whereType<String>()
-  //             .toList();
-  //         List<String> taskIds = _selectedItems
-  //             .whereType<Task>()
-  //             .map((task) => task.id)
-  //             .whereType<String>()
-  //             .toList();
-
-  //         if (noteIds.isNotEmpty && widget.groupObject.id != null) {
-  //           await _noteController.deleteShared(
-  //             noteIds,
-  //             widget.groupObject.id!,
-  //             widget.groupObject.name,
-  //           );
-  //         }
-
-  //         if (_noteController.errorMessage.value.isNotEmpty) {
-  //           CustomDialog.showError("Error", _noteController.errorMessage.value);
-  //         }
-
-  //         if (taskIds.isNotEmpty) {
-  //           await _taskController.delete(taskIds);
-  //         }
-  //         if (_taskController.errorMessage.value.isNotEmpty) {
-  //           CustomDialog.showError("Error", _taskController.errorMessage.value);
-  //         }
-  //         setState(() {
-  //           _selectedItems.clear();
-  //         });
-  //         Get.back();
+  //   if (groupId != null) {
+  //     if (_currentIndex == 0) {
+  //       await _noteController.getByGroup(groupId, groupType);
+  //       if (_noteController.errorMessage.value.isNotEmpty) {
+  //         CustomDialog.showError("Error", _noteController.errorMessage.value);
   //       }
-  //     },
-  //   );
-  //   CustomDialog.showSuccess("Success", "Successfully delete notes.");
+  //     } else {
+  //       await _taskController.getByGroup(groupId, groupType);
+  //       if (_taskController.errorMessage.value.isNotEmpty) {
+  //         CustomDialog.showError("Error", _taskController.errorMessage.value);
+  //       }
+  //     }
+  //   }
   // }
 
   @override
@@ -230,43 +179,22 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                   controller: _currentIndex == 0
                       ? _noteController
                       : _taskController,
-                  notes: _selectedItems.whereType<Note>().toList().isNotEmpty
-                      ? _selectedItems.whereType<Note>().toList()
-                      : null,
-                  tasks: _selectedItems.whereType<Task>().toList().isNotEmpty
-                      ? _selectedItems.whereType<Task>().toList()
-                      : null,
-                  onUpdate: (updatedItems) {
-                    final List<Note> updatedNotes = updatedItems
-                        .whereType<Note>()
-                        .toList();
-                    final List<Task> updatedTasks = updatedItems
-                        .whereType<Task>()
-                        .toList();
-                    if (updatedNotes.isNotEmpty) {
-                      _noteController.edit(updatedNotes);
-                    }
-                    if (updatedTasks.isNotEmpty) {
-                      _taskController.edit(updatedTasks);
-                    }
-
-                    setState(() {
-                      _selectedItems.clear();
-                      _selectionMode = SelectionMode.none;
-                    });
-                  },
+                  notes: _selectedNotes,
+                  tasks: _selectedTasks,
                   groupId: groupId,
                   groupType: groupType,
                   isForShared: true,
                   hidePin: true,
                   hideArchive: true,
+                  hideDelete: !_roleController.hasPermission(PermissionType.deleteShared)
                 ),
 
                 if (_selectionMode == SelectionMode.regular)
                   IconButton(
                     onPressed: () {
                       setState(() {
-                        _selectedItems.clear();
+                        _selectedNotes.clear();
+                        _selectedTasks.clear();
                         _selectionMode = SelectionMode.none;
                       });
                     },
@@ -275,12 +203,18 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
 
                 if (_selectionMode == SelectionMode.other)
                   IconButton(
-                    onPressed: () => _selectedItems.isNotEmpty
-                        ? Get.back(result: _selectedItems)
-                        : CustomDialog.showError(
-                            "Error",
-                            "Please select an item(s) to proceed.",
-                          ),
+                    onPressed: () {
+                      final selectedItems = [
+                        ..._selectedNotes,
+                        ..._selectedTasks,
+                      ];
+                      return selectedItems.isNotEmpty
+                          ? Get.back(result: selectedItems)
+                          : CustomDialog.showError(
+                              "Error",
+                              "Please select an item(s) to proceed.",
+                            );
+                    },
                     icon: Icon(Icons.check),
                   ),
               ],
@@ -301,6 +235,8 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
               controller: _tabController,
               children: [
                 ListScreen<Note>(
+                  key: noteListKey,
+                  keepAlive: true,
                   showAppBar: false,
                   title: '',
                   forGroupId: groupId,
@@ -308,6 +244,7 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                   pageType: ListScreenType.sharedNotes,
                   controller: _noteController,
                   initialSelectionMode: _selectionMode,
+                  preSelectedItems: _selectedNotes.toList(),
                   onItemTap: (note) {
                     Get.to(
                       NoteDetailScreen(
@@ -360,13 +297,18 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                     });
                   },
                   onSelectionChanged: (selected) {
-                    setState(() {
-                      _selectedItems.removeWhere((item) => item is Note);
-                      _selectedItems.addAll(selected.whereType<Note>());
-                    });
+                    _selectedNotes.clear();
+                    _selectedNotes.addAll(selected.whereType<Note>());
+                    print('Selected Notes Length: ${_selectedNotes.length}');
+                    print('Selected Tasks Length: ${_selectedTasks.length}');
                   },
+                  customFetchFunction: groupId != null
+                      ? () => _noteController.getByGroup(groupId, groupType)
+                      : null,
                 ),
                 ListScreen<Task>(
+                  key: taskListKey,
+                  keepAlive: true,
                   showAppBar: false,
                   title: '',
                   pageType: ListScreenType.sharedTasks,
@@ -374,6 +316,7 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                   forGroupType: groupType,
                   controller: _taskController,
                   initialSelectionMode: _selectionMode,
+                  preSelectedItems: _selectedTasks.toList(),
                   onItemTap: (task) {
                     Get.to(
                       TaskDetailScreen(
@@ -424,11 +367,14 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                     });
                   },
                   onSelectionChanged: (selected) {
-                    setState(() {
-                      _selectedItems.removeWhere((item) => item is Task);
-                      _selectedItems.addAll(selected.whereType<Task>());
-                    });
+                    _selectedTasks.clear();
+                    _selectedTasks.addAll(selected.whereType<Task>());
+                    print('Selected Notes Length: ${_selectedNotes.length}');
+                    print('Selected Tasks Length: ${_selectedTasks.length}');
                   },
+                  customFetchFunction: groupId != null
+                      ? () => _taskController.getByGroup(groupId, groupType)
+                      : null,
                 ),
               ],
             ),

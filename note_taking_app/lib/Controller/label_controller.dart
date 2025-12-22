@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/auth_controller.dart';
 import 'package:note_taking_app/Controller/base_controller.dart';
+import 'package:note_taking_app/Controller/note_controller.dart';
 import 'package:note_taking_app/Controller/role_controller.dart';
+import 'package:note_taking_app/Controller/task_controller.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
 import 'package:note_taking_app/Model/Repository/label_repository.dart';
@@ -13,6 +15,7 @@ import 'package:note_taking_app/Model/Repository/label_repository.dart';
 class LabelController extends Controller<Label> {
   var noteLabels = <Label>[].obs;
   var taskLabels = <Label>[].obs;
+  var _lastGeneratedContent = "".obs;
   var suggestedLabels = <Label>[].obs;
 
   StreamSubscription<List<Label>>? _noteLabelSubscription;
@@ -24,14 +27,15 @@ class LabelController extends Controller<Label> {
   void onInit() {
     super.onInit();
 
-    final AuthenticationController authController = Get.find<AuthenticationController>();
+    final AuthenticationController authController =
+        Get.find<AuthenticationController>();
     ever(authController.user, (user) {
       watchAllSubscription?.cancel();
       watchAllCountSubscription?.cancel();
       watchAllSubscription?.cancel();
       _noteLabelSubscription?.cancel();
       _taskLabelSubscription?.cancel();
-      
+
       if (user != null) {
         getAll();
         getNoteLabels();
@@ -58,9 +62,12 @@ class LabelController extends Controller<Label> {
   @override
   Future<Label?> create(Label entity) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       final isExisted = list
-          .where((label) => label.name == entity.name)
+          .where(
+            (label) => label.name == entity.name && label.type == entity.type,
+          )
           .toList();
 
       if (isExisted.isNotEmpty) {
@@ -87,11 +94,14 @@ class LabelController extends Controller<Label> {
         errorMessage.value = "Something went wrong";
       }
       return null;
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> incrementCount(Label label) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       final labelRepository = super.repository as LabelRepository;
       await labelRepository.incrementCount(label.id!, 1);
@@ -106,11 +116,14 @@ class LabelController extends Controller<Label> {
       }
     } catch (ex) {
       errorMessage.value = "Something went wrong.";
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> decrementCount(Label label) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       final labelRepository = super.repository as LabelRepository;
       await labelRepository.decrementCount(label.id!, -1);
@@ -125,13 +138,21 @@ class LabelController extends Controller<Label> {
       }
     } catch (ex) {
       errorMessage.value = "Something went wrong.";
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> generateLabel(ComponentType forType, String text) async {
     // Generate labels using Python backend.
     try {
+      isLoading.value = true;
       errorMessage.value = "";
+
+      print("4. text.isEmpty: ${text.isEmpty}");
+      if (text.isEmpty) return;
+      print("5. _lastGeneratedContent.value == text: ${_lastGeneratedContent.value == text}");
+      if (_lastGeneratedContent.value == text) return;
       final labelRepository = super.repository as LabelRepository;
       final existingLabels = forType == ComponentType.note
           ? noteLabels
@@ -147,6 +168,7 @@ class LabelController extends Controller<Label> {
       );
       print("Text: $text");
       print("Label Names: $suggestedLabelNames");
+      _lastGeneratedContent.value = text;
 
       // Check if label already exists.
       final exist = list.any(
@@ -157,6 +179,7 @@ class LabelController extends Controller<Label> {
             .where((label) => suggestedLabelNames.contains(label.name))
             .toList();
         suggestedLabels.assignAll(labels);
+        suggestedLabels.refresh();
       } else {
         // Not creating in Firebase Firestore yet, just return the new label.
         // Only create when user selects the label.
@@ -171,10 +194,13 @@ class LabelController extends Controller<Label> {
             )
             .toList();
         suggestedLabels.assignAll(newLabels);
+        suggestedLabels.refresh();
       }
     } catch (ex) {
       errorMessage.value = ex.toString();
       debugPrint(ex.toString());
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -194,20 +220,59 @@ class LabelController extends Controller<Label> {
   }
 
   void getNoteLabels() {
+    isLoading.value = true;
     errorMessage.value = "";
     final labelRepository = LabelRepository();
     _noteLabelSubscription?.cancel();
-    _noteLabelSubscription = labelRepository.watchNoteLabels().listen((data) {
-      noteLabels.assignAll(data);
-    }, onError: (_) => errorMessage.value = "Note labels cannot be retrieved.");
+    _noteLabelSubscription = labelRepository.watchNoteLabels().listen(
+      (data) {
+        noteLabels.assignAll(data);
+        isLoading.value = false;
+      },
+      onError: (_) {
+        errorMessage.value = "Note labels cannot be retrieved.";
+        isLoading.value = false;
+      },
+    );
   }
 
   void getTaskLabels() {
+    isLoading.value = true;
     errorMessage.value = "";
     final labelRepository = LabelRepository();
     _taskLabelSubscription?.cancel();
-    _taskLabelSubscription = labelRepository.watchTaskLabels().listen((data) {
-      taskLabels.assignAll(data);
-    }, onError: (_) => errorMessage.value = "Task labels cannot be retrieved.");
+    _taskLabelSubscription = labelRepository.watchTaskLabels().listen(
+      (data) {
+        taskLabels.assignAll(data);
+        isLoading.value = false;
+      },
+      onError: (_) {
+        errorMessage.value = "Task labels cannot be retrieved.";
+        isLoading.value = false;
+      },
+    );
+  }
+
+  @override
+  Future<void> delete(List<String> componentIds) async {
+    try {
+      isLoading.value = true;
+      errorMessage.value = "";
+      await repository.delete(componentIds);
+      list.removeWhere((item) => componentIds.contains(item.id));
+      filteredList.removeWhere((item) => componentIds.contains(item.id));
+
+      // Dereference notes and tasks from label.
+      final NoteController noteController = Get.find<NoteController>();
+      final TaskController taskController = Get.find<TaskController>();
+      for (var labelId in componentIds) {
+        noteController.removeLabelFromNotes(labelId);
+        taskController.removeLabelFromTasks(labelId);
+      }
+    } catch (ex) {
+      errorMessage.value = "Failed to delete notes.";
+    } finally {
+      isLoading.value = false;
+    }
   }
 }

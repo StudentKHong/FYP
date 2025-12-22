@@ -13,6 +13,7 @@ import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/SharedComponents/text_box.dart';
 import 'package:note_taking_app/UI/create_note.dart';
+import 'package:note_taking_app/UI/create_task.dart';
 import 'package:note_taking_app/UI/note_task.dart';
 
 // Assuming this page is only for Note and Task.
@@ -161,7 +162,9 @@ class _CreateLabelScreenState<T extends BaseEntity>
                         );
                       }
                     },
-                    child: Text("Add Existing ${isForNotes ? 'Notes': 'Tasks'}"),
+                    child: Text(
+                      "Add Existing ${isForNotes ? 'Notes' : 'Tasks'}",
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -192,15 +195,23 @@ class _CreateLabelScreenState<T extends BaseEntity>
                       //   );
                       // }
 
-                      Get.to(
-                        NoteDetailScreen(
-                          mode: Mode.create,
-                          initialLabel: createdLabel,
-                          isLabelReadOnly: true,
-                        ),
-                      );
+                      isForNotes
+                          ? Get.to(
+                              NoteDetailScreen(
+                                mode: Mode.create,
+                                initialLabel: createdLabel,
+                                isLabelReadOnly: true,
+                              ),
+                            )
+                          : Get.to(
+                              TaskDetailScreen(
+                                mode: Mode.create,
+                                initialLabel: createdLabel,
+                                isLabelReadOnly: true,
+                              ),
+                            );
                     },
-                    child: Text("Add a New ${isForNotes ? 'Note': 'Task'}"),
+                    child: Text("Add a New ${isForNotes ? 'Note' : 'Task'}"),
                   ),
                 ),
               ],

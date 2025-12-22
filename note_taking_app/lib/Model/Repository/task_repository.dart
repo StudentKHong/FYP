@@ -215,13 +215,14 @@ class TaskRepository extends UserRepository<Task> {
       final oldLabelId = oldTask.label?.id;
 
       // Update old and current labels' counts.
+      final oldExists = Get.find<LabelController>().taskLabels.any((label) => label.id == oldLabelId);
       final matchExisting = Get.find<LabelController>().taskLabels.any(
         (label) => label.id == entity.label?.id,
       );
       if (oldLabelId != entity.label?.id) {
         final LabelRepository labelRepository = Get.find<LabelRepository>();
-        if (oldLabelId != null) {
-          labelRepository.decrementCount(oldLabelId, -1);
+        if (oldLabelId != null && oldExists) {
+          labelRepository.decrementCount(oldLabelId, 1);
         }
         if (entity.label != null && entity.label?.id != null) {
           if (matchExisting) {

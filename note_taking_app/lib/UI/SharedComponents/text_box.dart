@@ -47,6 +47,7 @@ class CustomTextField extends StatelessWidget {
 
   Widget _getTextField(BuildContext context) {
     return TextField(
+      style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Colors.black),
       obscureText: isTextHidden,
       controller: controller,
       onEditingComplete: () => FocusScope.of(context).nextFocus(),

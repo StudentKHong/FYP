@@ -32,6 +32,7 @@ class TaskController extends Controller<Task> {
       if (user != null) {
         _labelController.getTaskLabels();
         getAll();
+        getAllCount();
       } else {
         list.clear();
         filteredList.clear();
@@ -76,6 +77,7 @@ class TaskController extends Controller<Task> {
   @override
   Future<Task?> create(Task entity) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       final newEntity = await repository.create(entity);
 
@@ -104,12 +106,15 @@ class TaskController extends Controller<Task> {
         errorMessage.value = "Something went wrong";
       }
       return null;
+    } finally {
+      isLoading.value = false;
     }
   }
 
   @override
   Future<void> delete(List<String> componentIds) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       final tasks = list
           .where((task) => componentIds.contains(task.id))
@@ -134,20 +139,23 @@ class TaskController extends Controller<Task> {
       filteredList.removeWhere((item) => taskIds.contains(item.id));
     } catch (ex) {
       errorMessage.value = "Failed to delete notes.";
+    } finally {
+      isLoading.value = false;
     }
   }
 
   @override
   Future<void> getAll() async {
-    try {
-      errorMessage.value = "";
+    isLoading.value = true;
+    errorMessage.value = "";
 
-      _watchByLabelSubscription?.cancel();
-      watchAllSubscription?.cancel();
+    _watchByLabelSubscription?.cancel();
+    watchAllSubscription?.cancel();
 
-      // Fetch tasks.
-      final labels = _labelController.taskLabels;
-      watchAllSubscription = _taskRepository.watchAll().listen((tasks) {
+    // Fetch tasks.
+    final labels = _labelController.taskLabels;
+    watchAllSubscription = _taskRepository.watchAll().listen(
+      (tasks) {
         final tasksWithLabels = tasks.map((task) {
           final labelId = task.label?.id;
           return labelId != null && labels.any((label) => label.id == labelId)
@@ -158,20 +166,24 @@ class TaskController extends Controller<Task> {
         }).toList();
         list.assignAll(tasksWithLabels);
         filteredList.assignAll(tasksWithLabels);
-      });
+        isLoading.value = false;
+      },
+      onError: (ex) {
+        errorMessage.value = ex.toString();
+        isLoading.value = false;
+      },
+    );
 
-      // Refilter if current filter exists.
-      if (currentFilter.value != null &&
-          currentFilter.value!.labelNames != null) {
-        filter();
-      }
-    } catch (ex) {
-      errorMessage.value = "Something went wrong.";
+    // Refilter if current filter exists.
+    if (currentFilter.value != null &&
+        currentFilter.value!.labelNames != null) {
+      filter();
     }
   }
 
   Future<void> getByGroup(String groupId, String groupType) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       // Fetch tasks.
       _watchByGroupSubscription = _taskRepository
@@ -188,6 +200,8 @@ class TaskController extends Controller<Task> {
       }
     } catch (ex) {
       errorMessage.value = "Something went wrong.";
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -202,29 +216,23 @@ class TaskController extends Controller<Task> {
         );
   }
 
-  // Future<void> getRecent() async {
-  //   try {
-  //     errorMessage.value = "";
-  //     final recentTasks = await _taskRepository.getRecentTasks();
-  //     list.assignAll(recentTasks);
-  //   } catch (ex) {
-  //     errorMessage.value = "Something went wrong.";
-  //   }
-  // }
-
   Future<Label?> getLabel(String labelId) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       _labelController.getById(labelId);
       return _labelController.content.value;
     } catch (e) {
       errorMessage.value = "Something went wrong";
       return null;
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<int?> getCountByLabel(String labelId) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       int? size;
       size = await _taskRepository.getTaskCount(labelId);
@@ -232,6 +240,8 @@ class TaskController extends Controller<Task> {
     } catch (ex) {
       errorMessage.value = "Something went wrong";
       return null;
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -241,6 +251,7 @@ class TaskController extends Controller<Task> {
     String groupType,
   ) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       groupContents = groupContents.map((content) {
         final labelName = content.label?.name;
@@ -251,23 +262,26 @@ class TaskController extends Controller<Task> {
           isPinned: false,
         );
       }).toList();
-      final List<Task> createdGroupContents =
-          await (repository as TaskRepository).shareMultiple(
-            groupContents,
-            groupId,
-            groupType,
-          );
-      filteredList.addAll(createdGroupContents);
-      _sortLists(list: filteredList);
-      list.addAll(createdGroupContents);
-      _sortLists(list: list);
+      // final List<Task> createdGroupContents =
+      await (repository as TaskRepository).shareMultiple(
+        groupContents,
+        groupId,
+        groupType,
+      );
+      // filteredList.addAll(createdGroupContents);
+      // _sortLists(list: filteredList);
+      // list.addAll(createdGroupContents);
+      // _sortLists(list: list);
     } catch (ex) {
       errorMessage.value = ex.toString();
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> editShared(Task task, String groupId, String groupType) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       final newEntity = await (repository as TaskRepository).editShared(
         task,
@@ -279,6 +293,8 @@ class TaskController extends Controller<Task> {
       pushItemToTop(entity: newEntity);
     } catch (ex) {
       errorMessage.value = ex.toString();
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -288,6 +304,7 @@ class TaskController extends Controller<Task> {
     String groupType,
   ) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       // Delete selected shared tasks.
       final tasks = list.where((task) => taskIds.contains(task.id)).toList();
@@ -320,11 +337,14 @@ class TaskController extends Controller<Task> {
       filteredList.removeWhere((item) => deletedNoteIds.contains(item.id));
     } catch (ex) {
       errorMessage.value = "Failed to delete notes.";
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> setLabelToTasks(String labelId, List<String> taskIds) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
 
       // Set label.
@@ -343,7 +363,19 @@ class TaskController extends Controller<Task> {
       }
     } catch (ex) {
       errorMessage.value = "Something went wrong";
+    } finally {
+      isLoading.value = false;
     }
+  }
+
+  Future<void> removeLabelFromTasks(String labelId) async {
+    final tasksToUpdate = list.map((item) {
+      if (item.label?.id == labelId) {
+        return item.copyWith(label: null, replaceLabel: true);
+      }
+      return item;
+    }).toList();
+    await edit(tasksToUpdate, pushToTop: false);
   }
 
   Future<void> togglePinStatus(Task task) async {
@@ -387,6 +419,7 @@ class TaskController extends Controller<Task> {
   @override
   void filter({DateTimeRange? taskPeriod}) {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       if (currentFilter.value == null || currentFilter.value!.isEmpty) {
         return;
@@ -403,10 +436,13 @@ class TaskController extends Controller<Task> {
       );
     } catch (e) {
       errorMessage.value = "Something went wrong";
+    } finally {
+      isLoading.value = false;
     }
   }
 
   void getArchived() {
+    isLoading.value = true;
     errorMessage.value = "";
     watchAllSubscription?.cancel();
     watchAllSubscription = (repository as TaskRepository)
@@ -424,9 +460,11 @@ class TaskController extends Controller<Task> {
                   : task;
             }).toList();
             filteredList.assignAll(tasksWithLabels);
+            isLoading.value = false;
           },
           onError: (ex) {
             errorMessage.value = ex.toString();
+            isLoading.value = false;
           },
         );
   }

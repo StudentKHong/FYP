@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -22,6 +23,7 @@ import 'package:note_taking_app/UI/Navigation/named_routes.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
 import 'package:note_taking_app/UI/SharedComponents/extended_card.dart';
 import 'package:note_taking_app/UI/SharedComponents/filter_popup.dart';
+import 'package:note_taking_app/UI/SharedComponents/loading_state.dart';
 import 'package:note_taking_app/UI/SharedComponents/search.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/SharedComponents/sort_popup.dart';
@@ -56,10 +58,12 @@ class ListScreen<T extends BaseEntity> extends StatefulWidget {
   final Controller<T> controller;
   final void Function()? customFetchFunction;
   final SelectionMode initialSelectionMode;
+  final List<T>? preSelectedItems;
   final VoidCallback? onAddTap;
   final void Function(T item)? onItemTap;
   final Function(SelectionMode mode)? onSelectionModeChanged;
   final Function(List<dynamic> selected)? onSelectionChanged;
+  final bool keepAlive;
 
   const ListScreen({
     super.key,
@@ -72,25 +76,27 @@ class ListScreen<T extends BaseEntity> extends StatefulWidget {
     required this.controller,
     this.customFetchFunction,
     this.initialSelectionMode = SelectionMode.none,
+    this.preSelectedItems,
     this.onAddTap,
     this.onItemTap,
     this.onSelectionModeChanged,
     this.onSelectionChanged,
+    this.keepAlive = false,
   });
 
   @override
-  State<ListScreen<T>> createState() => _ListScreenState<T>();
+  State<ListScreen<T>> createState() => ListScreenState<T>();
 }
 
-class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
+class ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
+    with AutomaticKeepAliveClientMixin {
   final AuthenticationController authController =
       Get.find<AuthenticationController>();
   final RoleController roleController = Get.find<RoleController>();
   final TextEditingController _searchController = TextEditingController();
   late final Controller<T> _controller;
-  // late final Controller<T> _noteTaskController;
 
-  final List<T> _selectedItems = [];
+  late List<T> _selectedItems;
   late SelectionMode _selectionMode;
   int filteredListUpdateCount = 0;
 
@@ -99,13 +105,8 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
     super.initState();
 
     _controller = widget.controller;
+    _selectedItems = widget.preSelectedItems ?? [];
     _selectionMode = widget.initialSelectionMode;
-    // // Get NoteController or TaskController
-    // if (T == Note) {
-    //   _noteTaskController = Get.find<NoteController>() as Controller<T>;
-    // } else if (T == Task) {
-    //   _noteTaskController = Get.find<TaskController>() as Controller<T>;
-    // }
 
     _fetchData();
   }
@@ -113,7 +114,72 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
   @override
   void didUpdateWidget(covariant ListScreen<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _fetchData();
+
+    // if (!listEquals(widget.preSelectedItems, oldWidget.preSelectedItems)) {
+    //   setState(() {
+    //     _selectedItems = List.from(widget.preSelectedItems ?? []);
+    //   });
+    // }
+    if (widget.initialSelectionMode != oldWidget.initialSelectionMode) {
+      setState(() {
+        _selectionMode = widget.initialSelectionMode;
+        if (_selectionMode == SelectionMode.none) {
+          _selectedItems.clear();
+        }
+      });
+    }
+  }
+
+  Widget _buildEmptyState() {
+    IconData icon;
+    String message;
+    String? actionText;
+    VoidCallback? action;
+
+    switch (widget.pageType) {
+      case ListScreenType.notes:
+        icon = Icons.note_add_outlined;
+        message = 'No notes yet.';
+        actionText = 'Create your first note.';
+        action = widget.onAddTap;
+        break;
+      case ListScreenType.tasks:
+        icon = Icons.task_outlined;
+        message = 'No tasks yet.';
+        actionText = 'Create your first task.';
+        action = widget.onAddTap;
+        break;
+      case ListScreenType.classes:
+        icon = Icons.class_outlined;
+        message = 'No classes yet.';
+        actionText =
+            'Join ${roleController.hasPermission(PermissionType.createClass) ? 'Or Create' : ''} a class.';
+        action = widget.onAddTap;
+        break;
+      case ListScreenType.teams:
+        icon = Icons.group_add_outlined;
+        message = 'No classes yet.';
+        actionText =
+            'Join ${roleController.hasPermission(PermissionType.createClass) ? 'or create' : ''} a class.';
+        action = widget.onAddTap;
+        break;
+      case ListScreenType.noteLabels || ListScreenType.taskLabels:
+        icon = Icons.group_add_outlined;
+        message = 'No labels yet.';
+        actionText = 'Create a label.';
+        action = widget.onAddTap;
+        break;
+      default:
+        icon = Icons.question_mark_outlined;
+        message = 'Nothing here yet.';
+    }
+
+    return EmptyState(
+      icon: icon,
+      message: message,
+      actionText: actionText,
+      action: action,
+    );
   }
 
   Future<void> _fetchData() async {
@@ -123,27 +189,28 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
       widget.customFetchFunction!();
       return;
     }
-    if (_controller is LabelController) {
-      if (widget.pageType == ListScreenType.noteLabels) {
-        (_controller as LabelController).getNoteLabels();
-      } else if (widget.pageType == ListScreenType.taskLabels) {
-        (_controller as LabelController).getTaskLabels();
-      }
-    } else if (widget.pageType == ListScreenType.sharedNotes ||
-        widget.pageType == ListScreenType.sharedTasks) {
-      return;
-    } else {
-      if (widget.pageType == ListScreenType.archivedNotes &&
-          _controller is NoteController) {
-        (_controller as NoteController).getArchived();
-      } else if (widget.pageType == ListScreenType.archivedTasks &&
-          _controller is TaskController) {
-        (_controller as TaskController).getArchived();
-      } else {
-        print("Running getAll() function.");
-        _controller.getAll();
-      }
+    // if (_controller is LabelController) {
+    //   if (widget.pageType == ListScreenType.noteLabels) {
+    //     (_controller as LabelController).getNoteLabels();
+    //   } else if (widget.pageType == ListScreenType.taskLabels) {
+    //     (_controller as LabelController).getTaskLabels();
+    //   }
+    // } else if (widget.pageType == ListScreenType.sharedNotes ||
+    //     widget.pageType == ListScreenType.sharedTasks) {
+    //   return;
+    // } else {
+    if (widget.pageType == ListScreenType.archivedNotes &&
+        _controller is NoteController) {
+      (_controller as NoteController).getArchived();
+    } else if (widget.pageType == ListScreenType.archivedTasks &&
+        _controller is TaskController) {
+      (_controller as TaskController).getArchived();
     }
+    // else {
+    //   print("Running getAll() function.");
+    //   _controller.getAll();
+    // }
+    // }
   }
 
   VoidCallback? onTapCard(T item) {
@@ -170,8 +237,8 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
               title: item.name,
               pageType: ListScreenType.notes,
               controller: controller,
-              customFetchFunction: () {
-                controller.getByLabel(item.id!);
+              customFetchFunction: () async {
+                await controller.getByLabel(item.id!);
               },
               onAddTap: () => Get.to(
                 NoteDetailScreen(
@@ -326,6 +393,68 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
     return iconButtons;
   }
 
+  Widget _buildAddButton() {
+    if (_selectionMode == SelectionMode.none) {
+      return widget.pageType == ListScreenType.classes ||
+              widget.pageType == ListScreenType.teams
+          ? AddButtonPopUp(
+              forGroupType: widget.pageType == ListScreenType.classes
+                  ? "class"
+                  : "team",
+              joinFunction: (code) async {
+                if (widget.pageType == ListScreenType.classes) {
+                  final joinedClass = await (_controller as ClassController)
+                      .join(code);
+                  if (joinedClass == null) {
+                    if (_controller.errorMessage.value.isNotEmpty) {
+                      CustomDialog.showError(
+                        "Error",
+                        _controller.errorMessage.value,
+                      );
+                    }
+                    return;
+                  }
+                  Get.to(
+                    class_page.ClassTeamScreen(
+                      mode: SelectionMode.none,
+                      groupObject: joinedClass as Group,
+                    ),
+                  );
+                } else {
+                  final joinedTeam = await (_controller as TeamController).join(
+                    code,
+                  );
+                  if (joinedTeam == null) {
+                    if (_controller.errorMessage.value.isNotEmpty) {
+                      CustomDialog.showError(
+                        "Error",
+                        _controller.errorMessage.value,
+                      );
+                    }
+                    return;
+                  }
+                  Get.to(
+                    class_page.ClassTeamScreen(
+                      mode: SelectionMode.none,
+                      groupObject: joinedTeam as Group,
+                    ),
+                  );
+                }
+              },
+            )
+          : widget.onAddTap != null
+          ? IconButton(
+              onPressed: widget.onAddTap,
+              icon: Icon(
+                Icons.add,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+            )
+          : const SizedBox.shrink();
+    }
+    return SizedBox.shrink();
+  }
+
   Widget _buildCard({
     required T item,
     required String dateCreated,
@@ -342,6 +471,7 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
         leadingIcon: Icons.label,
         title: item.name,
         onTap: onTap,
+        hideTrailing: _selectionMode != SelectionMode.none
       );
     }
     return CustomExtendedCard(
@@ -371,6 +501,7 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.keepAlive) super.build(context);
     return ((widget.pageType == ListScreenType.classes &&
                 !roleController.hasPermission(PermissionType.viewClass)) ||
             (widget.pageType == ListScreenType.teams &&
@@ -505,18 +636,18 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
                 : null,
             endDrawer: const HamburgerMenu(),
             body: Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Column(
                 children: [
                   if (widget.description != null) ...[
                     Text(widget.description!),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 16),
                   ],
                   CustomSearchBar(
                     searchController: _searchController,
                     onSearch: (value) => _controller.search(value),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -536,7 +667,10 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
                                   ),
                                 );
                               },
-                              icon: Icon(Icons.filter_alt),
+                              icon: Icon(
+                                Icons.filter_alt,
+                                color: Theme.of(context).colorScheme.onPrimary,
+                              ),
                             ),
                           IconButton(
                             onPressed: () async {
@@ -548,184 +682,154 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>> {
                                 ),
                               );
                             },
-                            icon: Icon(Icons.sort),
+                            icon: Icon(
+                              Icons.sort,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
                           ),
                         ],
                       ),
-
-                      if (_selectionMode == SelectionMode.none)
-                        widget.pageType == ListScreenType.classes ||
-                                widget.pageType == ListScreenType.teams
-                            ? AddButtonPopUp(
-                                forGroupType:
-                                    widget.pageType == ListScreenType.classes
-                                    ? "class"
-                                    : "team",
-                                joinFunction: (code) async {
-                                  if (widget.pageType ==
-                                      ListScreenType.classes) {
-                                    final joinedClass =
-                                        await (_controller as ClassController)
-                                            .join(code);
-                                    if (joinedClass == null) {
-                                      if (_controller
-                                          .errorMessage
-                                          .value
-                                          .isNotEmpty) {
-                                        CustomDialog.showError(
-                                          "Error",
-                                          _controller.errorMessage.value,
-                                        );
-                                      }
-                                      return;
-                                    }
-                                    Get.to(
-                                      class_page.ClassTeamScreen(
-                                        mode: SelectionMode.none,
-                                        groupObject: joinedClass as Group,
-                                      ),
-                                    );
-                                  } else {
-                                    final joinedTeam =
-                                        await (_controller as TeamController)
-                                            .join(code);
-                                    if (joinedTeam == null) {
-                                      if (_controller
-                                          .errorMessage
-                                          .value
-                                          .isNotEmpty) {
-                                        CustomDialog.showError(
-                                          "Error",
-                                          _controller.errorMessage.value,
-                                        );
-                                      }
-                                      return;
-                                    }
-                                    Get.to(
-                                      class_page.ClassTeamScreen(
-                                        mode: SelectionMode.none,
-                                        groupObject: joinedTeam as Group,
-                                      ),
-                                    );
-                                  }
-                                },
-                              )
-                            : widget.onAddTap != null
-                            ? IconButton(
-                                onPressed: widget.onAddTap,
-                                icon: Icon(Icons.add),
-                              )
-                            : const SizedBox.shrink(),
+                      _buildAddButton(),
                     ],
                   ),
 
                   const SizedBox(height: 10),
                   Expanded(
-                    child: Obx(() {
-                      final listToShow =
-                          ((widget.pageType == ListScreenType.noteLabels)
-                                  ? (_controller as LabelController).noteLabels
-                                  : (widget.pageType ==
-                                        ListScreenType.taskLabels)
-                                  ? (_controller as LabelController).taskLabels
-                                  : _controller.filteredList)
-                              .cast<T>();
+                    child: RefreshIndicator(
+                      onRefresh: _fetchData,
+                      child: Obx(() {
+                        final listToShow =
+                            ((widget.pageType == ListScreenType.noteLabels)
+                                    ? (_controller as LabelController)
+                                          .noteLabels
+                                    : (widget.pageType ==
+                                          ListScreenType.taskLabels)
+                                    ? (_controller as LabelController)
+                                          .taskLabels
+                                    : _controller.filteredList)
+                                .cast<T>();
 
-                      return ListView.builder(
-                        itemCount: listToShow.length,
-                        itemBuilder: (context, index) {
-                          final item = listToShow[index];
+                        if (_controller.isLoading.value && listToShow.isEmpty) {
+                          return LoadingShimmer();
+                        }
 
-                          final isFilterable = item is FilterableEntity;
-                          String dateCreated = '';
-                          if ((isFilterable &&
-                                  (item as FilterableEntity).dateCreated !=
-                                      null) ||
-                              item is Team) {
-                            dateCreated = DateFormat.yMd().format(
-                              item.dateCreated!,
+                        if (listToShow.isEmpty &&
+                            !_controller.isLoading.value) {
+                          return _buildEmptyState();
+                        }
+
+                        return ListView.builder(
+                          itemCount: listToShow.length,
+                          itemBuilder: (context, index) {
+                            final item = listToShow[index];
+
+                            final isFilterable = item is FilterableEntity;
+                            String dateCreated = '';
+                            if ((isFilterable &&
+                                    (item as FilterableEntity).dateCreated !=
+                                        null) ||
+                                item is Team) {
+                              dateCreated = DateFormat.yMd().format(
+                                item.dateCreated!,
+                              );
+                            }
+                            List<String> otherDetails = _getOtherDetails(item);
+                            final onTap = _selectionMode != SelectionMode.none
+                                ? () {
+                                    widget.onItemTap?.call(item);
+                                    _selectItem(item);
+                                  }
+                                : onTapCard(item);
+
+                            // Build card-like widget to display details.
+                            final card = _buildCard(
+                              item: item,
+                              dateCreated: dateCreated,
+                              otherDetails: otherDetails,
+                              onTap: onTap,
+                              iconButtons: _buildIconButtons(item),
                             );
-                          }
-                          List<String> otherDetails = _getOtherDetails(item);
-                          final onTap = _selectionMode != SelectionMode.none
-                              ? () {
-                                  widget.onItemTap?.call(item);
-                                  _selectItem(item);
-                                }
-                              : onTapCard(item);
 
-                          // if (widget.pageType == ListScreenType.labels &&
-                          //     item is Label) {
-                          //   return NavigationButtons.drawerTile(
-                          //     context: context,
-                          //     leadingIcon: Icons.label,
-                          //     title: item.name,
-                          //     trailingText: item.count.toString(),
-                          //     onTap: () => Get.to(
-                          //       LabelScreen(
-                          //         title: item.name,
-                          //         controller: _controller,
-                          //       ),
-                          //     ),
-                          //   );
-                          // }
-
-                          // Build card-like widget to display details.
-                          final card = _buildCard(
-                            item: item,
-                            dateCreated: dateCreated,
-                            otherDetails: otherDetails,
-                            onTap: onTap,
-                            iconButtons: _buildIconButtons(item),
-                          );
-
-                          final isSelected = _selectedItems.contains(item);
-                          return Padding(
-                            padding: EdgeInsets.symmetric(vertical: 4),
-                            child: ListTile(
-                              title: card,
-                              onTap: _selectionMode != SelectionMode.none
-                                  ? () => _selectItem(item)
-                                  : null,
-                              onLongPress:
-                                  _selectionMode == SelectionMode.none &&
-                                      widget.pageType != ListScreenType.classes
-                                  ? () {
-                                      setState(() {
-                                        _selectionMode = SelectionMode.regular;
-                                        _selectedItems.add(item);
-
-                                        widget.onSelectionModeChanged?.call(
-                                          _selectionMode,
-                                        );
-                                        widget.onSelectionChanged?.call(
-                                          List.from(_selectedItems),
-                                        );
-                                      });
-                                    }
-                                  : null,
-                              trailing: _selectionMode != SelectionMode.none
-                                  ? SizedBox(
-                                      width: 1,
-                                      child: Checkbox(
-                                        value: isSelected,
-                                        onChanged: (_) {
-                                          _selectItem(item);
-                                        },
-                                      ),
-                                    )
-                                  : null,
-                            ),
-                          );
-                        },
-                      );
-                    }),
+                            final isSelected = _selectedItems.contains(item);
+                            return AnimatedContainer(
+                              duration: Duration(milliseconds: 200),
+                              margin: EdgeInsets.symmetric(vertical: 6),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: isSelected
+                                    ? Border.all(
+                                        color: Theme.of(context).primaryColor,
+                                        width: 2,
+                                      )
+                                    : null,
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: _selectionMode != SelectionMode.none
+                                      ? () => _selectItem(item)
+                                      : null,
+                                  onLongPress:
+                                      _selectionMode == SelectionMode.none
+                                      ? () {
+                                          setState(() {
+                                            _selectionMode = SelectionMode.regular;
+                                            _selectedItems.add(item);
+                                          });
+                                        }
+                                      : null,
+                                  child: Stack(
+                                    children: [
+                                      card,
+                                      if (_selectionMode != SelectionMode.none)
+                                        Positioned(
+                                          top: 8,
+                                          right: 8,
+                                          child: Checkbox(
+                                            value: isSelected,
+                                            onChanged: (_) => _selectItem(item),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  // ? ListTile(
+                                  //     subtitle: card,
+                                  //     onTap:
+                                  //         _selectionMode !=
+                                  //             SelectionMode.none
+                                  //         ? () => _selectItem(item)
+                                  //         : null,
+                                  //     trailing:
+                                  //         _selectionMode !=
+                                  //             SelectionMode.none
+                                  //         ? SizedBox(
+                                  //             width: 1,
+                                  //             child: Checkbox(
+                                  //               value: isSelected,
+                                  //               onChanged: (_) {
+                                  //                 _selectItem(item);
+                                  //               },
+                                  //             ),
+                                  //           )
+                                  //         : null,
+                                  //   )
+                                  // : card,
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      }),
+                    ),
                   ),
                 ],
               ),
             ),
           );
   }
+
+  @override
+  bool get wantKeepAlive => widget.keepAlive;
 }
 
 typedef AsyncJoinCallback = Future<void> Function(String code);
@@ -835,9 +939,6 @@ class _AddButtonPopUpState extends State<AddButtonPopUp> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  style: ButtonStyle(
-                    backgroundColor: WidgetStatePropertyAll(Colors.white),
-                  ),
                   onPressed: () async {
                     final String code = controller.text;
                     await widget.joinFunction!(code);
@@ -900,6 +1001,9 @@ class _AddButtonPopUpState extends State<AddButtonPopUp> {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(onPressed: _togglePopUp, icon: Icon(Icons.add));
+    return IconButton(
+      onPressed: _togglePopUp,
+      icon: Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary),
+    );
   }
 }

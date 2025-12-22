@@ -6,6 +6,7 @@ import 'package:note_taking_app/Controller/setting_controller.dart';
 import 'package:note_taking_app/Model/Models/login_details.dart';
 import 'package:note_taking_app/UI/Navigation/named_routes.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_theme.dart';
+import 'package:note_taking_app/UI/SharedComponents/loading_state.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/SharedComponents/text_box.dart';
 
@@ -83,7 +84,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Icon(Icons.book),
+                    Icon(
+                      Icons.book,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                     const SizedBox(height: 10),
                     Text(
                       'Note Taking App',
@@ -113,43 +117,62 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      if (_validateInputs()) {
-                        Map<String, String> loginData = {
-                          for (var detail in loginDetails)
-                            detail.title.toLowerCase(): detail.controller.text
-                                .trim(),
-                        };
+                  child: Obx(
+                    () => ElevatedButton(
+                      onPressed: authController.isLoading.value
+                          ? null
+                          : () async {
+                              if (_validateInputs()) {
+                                Map<String, String> loginData = {
+                                  for (var detail in loginDetails)
+                                    detail.title.toLowerCase(): detail
+                                        .controller
+                                        .text
+                                        .trim(),
+                                };
 
-                        await authController.login(
-                          loginData['email']!,
-                          loginData['password']!,
-                        );
+                                await authController.login(
+                                  loginData['email']!,
+                                  loginData['password']!,
+                                );
 
-                        if (authController.errorMessage != null &&
-                            authController.errorMessage!.isNotEmpty) {
-                          CustomDialog.showError(
-                            'Login Failed',
-                            authController.errorMessage!,
-                          );
-                        } else {
-                          CustomDialog.showSuccess(
-                            'Success',
-                            'Successfully login.',
-                          );
-                          await settingController.get();
-                          if (settingController.currentSettings.value != null) {
-                            themeController.updateTheme(
-                              settingController.currentSettings.value!.darkMode,
-                            );
-                          }
-                        }
-                      }
-                    },
-                    child: Text(
-                      'Login',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                                if (authController.errorMessage != null &&
+                                    authController.errorMessage!.isNotEmpty) {
+                                  CustomDialog.showError(
+                                    'Login Failed',
+                                    authController.errorMessage!,
+                                  );
+                                } else {
+                                  CustomDialog.showSuccess(
+                                    'Success',
+                                    'Successfully login.',
+                                  );
+                                  await settingController.get();
+                                  if (settingController.currentSettings.value !=
+                                      null) {
+                                    themeController.updateTheme(
+                                      settingController
+                                          .currentSettings
+                                          .value!
+                                          .darkMode,
+                                    );
+                                  }
+                                }
+                              }
+                            },
+                      child: authController.isLoading.value
+                          ? LoadingIndicator(
+                              color: Theme.of(context).colorScheme.onSurface,
+                            )
+                          : Text(
+                              'Login',
+                              style: Theme.of(context).textTheme.bodyMedium!
+                                  .copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.surface,
+                                  ),
+                            ),
                     ),
                   ),
                 ),
@@ -157,7 +180,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () => Get.toNamed(Routes.register),
-                    child: Text('Register'),
+                    child: Text(
+                      'Register',
+                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                        color: Theme.of(context).colorScheme.surface,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -187,11 +215,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Center(
                     child: Text(
                       'Or login as Guest',
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                         color: Colors.blue,
                         decoration: TextDecoration.underline,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),

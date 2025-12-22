@@ -81,7 +81,10 @@ class Routes {
         final initialLabel = args?['initialLabel'] as Label?;
         final isLabelReadOnly = args?['isLabelReadOnly'] as bool? ?? false;
 
-        final tempController = Get.put(NoteController(), tag: "notes_label_$labelId");
+        final tempController = Get.put(
+          NoteController(),
+          tag: "notes_label_$labelId",
+        );
         return ListScreen<Note>(
           title: initialLabel?.name ?? 'Unknown Label',
           pageType: ListScreenType.notes,
@@ -117,7 +120,10 @@ class Routes {
         final initialLabel = args?['initialLabel'] as Label?;
         final isLabelReadOnly = args?['isLabelReadOnly'] as bool? ?? false;
 
-        final tempController = Get.put(TaskController(), tag: "tasks_label_$labelId");
+        final tempController = Get.put(
+          TaskController(),
+          tag: "tasks_label_$labelId",
+        );
         return ListScreen<Task>(
           title: initialLabel?.name ?? 'Unknown Label',
           pageType: ListScreenType.tasks,
@@ -182,6 +188,12 @@ class Routes {
             controller: Get.find<NoteController>(),
           ),
         ),
+        onItemTap: (label) {
+          Get.toNamed(
+            Routes.notesByLabelWithId(label.id ?? ''),
+            arguments: {"initialLabel": label, "isLabelReadOnly": true},
+          );
+        },
       ),
     ),
     GetPage(
@@ -196,6 +208,12 @@ class Routes {
             controller: Get.find<TaskController>(),
           ),
         ),
+        onItemTap: (label) {
+          Get.toNamed(
+            Routes.notesByLabelWithId(label.id ?? ''),
+            arguments: {"initialLabel": label, "isLabelReadOnly": true},
+          );
+        },
       ),
     ),
     GetPage(

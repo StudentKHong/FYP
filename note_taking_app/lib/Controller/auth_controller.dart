@@ -20,6 +20,7 @@ class AuthenticationController extends GetxController {
   final Rx<User?> firebaseUser = Rx<User?>(null);
   final Rx<AppUser?> user = Rx<AppUser?>(null);
   String? errorMessage;
+  var isLoading = false.obs;
 
   @override
   void onInit() {
@@ -27,36 +28,30 @@ class AuthenticationController extends GetxController {
     FirebaseAuth.instance.authStateChanges().listen((user) {
       firebaseUser.value = user;
 
-      if (user == null) {
-        _onLogout();
-      } else {
+      if (user != null) {
         _onLogin();
       }
     });
   }
 
-  void _onLogin() {
-    Get.find<ThemeController>();
-    Get.find<NoteController>();
-    Get.find<TaskController>();
-    Get.find<ClassController>();
-    Get.find<TeamController>();
-    Get.find<LabelController>();
-    Get.find<SettingController>();
-    Get.find<NotificationController>();
-    Get.find<CountController>();
+  void _registeredController<T>(T Function() creator) {
+    if (Get.isRegistered<T>()) {
+      Get.find<T>();
+    } else {
+      Get.lazyPut(creator, fenix: true);
+    }
   }
 
-  void _onLogout() {
-    Get.delete<CountController>(force: true);
-    Get.delete<NoteController>(force: true);
-    Get.delete<TaskController>(force: true);
-    Get.delete<LabelController>(force: true);
-    Get.delete<ClassController>(force: true);
-    Get.delete<TeamController>(force: true);
-    Get.delete<NotificationController>(force: true);
-    Get.delete<SettingController>(force: true);
-    Get.delete<ThemeController>(force: true);
+  void _onLogin() {
+    _registeredController(() => ThemeController());
+    _registeredController(() => NoteController());
+    _registeredController(() => TaskController());
+    _registeredController(() => ClassController());
+    _registeredController(() => TeamController());
+    _registeredController(() => LabelController());
+    _registeredController(() => SettingController());
+    _registeredController(() => NotificationController());
+    _registeredController(() => CountController());
   }
 
   void checkAuthentication() {
@@ -69,6 +64,7 @@ class AuthenticationController extends GetxController {
 
   Future<void> login(String email, String password) async {
     try {
+      isLoading.value = true;
       errorMessage = "";
       // Login user through Firebase Authentication.
       AppUser? user = await _authRepository.login(email, password);
@@ -94,11 +90,14 @@ class AuthenticationController extends GetxController {
       }
     } catch (ex) {
       errorMessage = "Failed to login.";
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> loginAnonymously() async {
     try {
+      isLoading.value = true;
       errorMessage = "";
       AppUser? user = await _authRepository.loginAnonymously();
       this.user.value = user;
@@ -114,6 +113,8 @@ class AuthenticationController extends GetxController {
     } catch (ex) {
       errorMessage = ex.toString();
       // errorMessage = "Failed to login as guest.";
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -124,6 +125,7 @@ class AuthenticationController extends GetxController {
     String password,
   ) async {
     try {
+      isLoading.value = true;
       errorMessage = "";
       final user = await _authRepository.linkAnonymousAccountToEmail(
         name,
@@ -136,11 +138,14 @@ class AuthenticationController extends GetxController {
     } catch (ex) {
       errorMessage = ex.toString();
       // errorMessage = "Failed to create account.";
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> logout() async {
     try {
+      isLoading.value = true;
       errorMessage = "";
       await _authRepository.signOut();
       user.value = null;
@@ -148,6 +153,8 @@ class AuthenticationController extends GetxController {
       errorMessage = ex.message;
     } catch (ex) {
       errorMessage = "Failed to logout.";
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -158,6 +165,7 @@ class AuthenticationController extends GetxController {
     String password,
   ) async {
     try {
+      isLoading.value = true;
       errorMessage = "";
       await _authRepository.signUp(name, userType, email, password);
       errorMessage = null;
@@ -171,11 +179,14 @@ class AuthenticationController extends GetxController {
       }
     } catch (ex) {
       errorMessage = ex.toString();
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> delete(String email) async {
     try {
+      isLoading.value = true;
       errorMessage = "";
       await _authRepository.deleteAccount(email);
     } on FirebaseAuthException catch (ex) {
@@ -187,6 +198,8 @@ class AuthenticationController extends GetxController {
     } catch (ex) {
       errorMessage = "Failed to delete account.";
       rethrow;
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -197,6 +210,7 @@ class AuthenticationController extends GetxController {
     String? profileUrl,
   }) async {
     try {
+      isLoading.value = true;
       errorMessage = "";
       await _authRepository.updateProfile(name, email, password, profileUrl);
 
@@ -214,6 +228,8 @@ class AuthenticationController extends GetxController {
         errorMessage = "Failed to update profile.";
       }
       errorMessage = ex.toString();
+    } finally {
+      isLoading.value = false;
     }
   }
 }

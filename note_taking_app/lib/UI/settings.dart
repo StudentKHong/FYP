@@ -54,7 +54,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 title,
-                style: Theme.of(context).textTheme.titleMedium,
+                style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                  color: Theme.of(context).colorScheme.surface,
+                  fontWeight: FontWeight.bold
+                ),
               ),
             ),
             const Divider(),
@@ -121,9 +124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       if (settingController.currentSettings.value == null) {
                         return;
                       }
-                      setState(() {
-                        
-                      });
+                      setState(() {});
                       await settingController.edit(notificationsEnabled: value);
                     });
                   },
@@ -135,11 +136,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Reminder',
                     items: reminderSettings,
                     selectedValue: settingController.getReminderOption(),
-                    onChanged: settings!.notificationsEnabled ? (value) {
-                      SchedulerBinding.instance.addPostFrameCallback((_) {
-                        settingController.setSelectedReminder(value);
-                      });
-                    }: null,
+                    onChanged: settings!.notificationsEnabled
+                        ? (value) {
+                            SchedulerBinding.instance.addPostFrameCallback((_) {
+                              settingController.setSelectedReminder(value);
+                            });
+                          }
+                        : null,
                     isColumn: false,
                   ),
                 ),

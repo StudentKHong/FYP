@@ -65,6 +65,7 @@ dependencies:
   connectivity_plus: ^7.0.0
   path: ^1.9.1
   flutter_local_notifications: ^18.0.1
+  google_fonts: ^6.3.3
 
 dev_dependencies:
   flutter_test:

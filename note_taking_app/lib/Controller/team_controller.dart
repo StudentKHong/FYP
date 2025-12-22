@@ -39,6 +39,7 @@ class TeamController extends Controller<Team> {
 
   Future<Team?> join(String code) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       _authenticationController.checkAuthentication();
 
@@ -54,11 +55,14 @@ class TeamController extends Controller<Team> {
         errorMessage.value = ex.toString();
       }
       return null;
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> leave(String teamId) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       _authenticationController.checkAuthentication();
       
@@ -66,6 +70,8 @@ class TeamController extends Controller<Team> {
       list.removeWhere((item) => item.id == teamId);
     } catch (ex) {
       errorMessage.value = "Something went wrong.";
+    } finally {
+      isLoading.value = false;
     }
   }
 

@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:note_taking_app/Controller/label_controller.dart';
+import 'package:note_taking_app/Controller/note_controller.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
 import 'package:note_taking_app/Model/Models/note_model.dart';
 import 'package:note_taking_app/Model/Repository/crud_repository.dart';
@@ -206,33 +208,82 @@ class NoteRepository extends UserRepository<Note> {
     final batch = FirebaseFirestore.instance.batch();
 
     List<Note> updatedEntities = [];
-    for (final entity in entities) {
+    for (var entity in entities) {
       if (entity.id == null) {
         continue;
       }
-      // Capture old document snapshot. (For updating the old label's count.)
-      final oldSnapshot = await collection.doc(entity.id).get();
-      final oldNote = fromFirestore(oldSnapshot);
-      final oldLabelId = oldNote.label?.id;
 
-      // Update note.
-      final documentReference = collection.doc(entity.id);
-      final dataToUpdate = entity.toMap();
-      dataToUpdate.remove('id');
-      batch.update(documentReference, dataToUpdate);
+      // Retrieve old note.
+      Note? oldNote;
+      try {
+        oldNote = Get.find<NoteController>().list.firstWhere(
+          (note) => note.id == entity.id,
+        );
+      } catch (_) {}
 
-      // Update old and current labels' counts.
-      if (oldLabelId != entity.label?.id) {
-        if (oldLabelId != null) {
-          Get.find<LabelRepository>().decrementCount(oldLabelId, -1);
-        }
-        if (entity.label?.id != null) {
-          Get.find<LabelRepository>().incrementCount(entity.label!.id!, 1);
+      if (oldNote == null) {
+        final document = await collection
+            .doc(entity.id)
+            .get(GetOptions(source: Source.cache));
+        if (document.exists) {
+          oldNote = fromFirestore(document);
+        } else {
+          continue;
         }
       }
-      updatedEntities.add(entity);
+
+      Note newNote = entity.copyWith();
+      // Update count of old label and new label.
+      // If new label does not exist, create new.
+      final labelCollection = FirebaseFirestore.instance.collection('labels');
+
+      final oldLabelId = oldNote.label?.id;
+      final newLabelId = entity.label?.id;
+
+      if (oldLabelId != newLabelId) {
+        if (oldLabelId != null) {
+          batch.set(labelCollection.doc(oldLabelId), {
+            'count': FieldValue.increment(-1),
+          }, SetOptions(merge: true));
+        }
+        if (newNote.label != null) {
+          if (newLabelId != null && newLabelId.isNotEmpty) {
+            batch.set(labelCollection.doc(newLabelId), {
+              'count': FieldValue.increment(1),
+            }, SetOptions(merge: true));
+          } else {
+            final documentReference = labelCollection.doc();
+            batch.set(documentReference, newNote.label!.toMap());
+            final newLabel = newNote.label!.copyWith(id: documentReference.id);
+            newNote = newNote.copyWith(label: newLabel);
+          }
+        }
+      }
+
+      // Update note.
+      final documentReference = collection.doc(newNote.id);
+      final dataToUpdate = newNote.toMap();
+      dataToUpdate.remove('id');
+      batch.set(documentReference, dataToUpdate, SetOptions(merge: true));
+
+      print("New Note: ${newNote.id}");
+      print("New Note: ${newNote.name}");
+      print("New Note (Label): ${newNote.label?.id}");
+      print("New Note (Label): ${newNote.label?.name}");
+      print("New Note: ${newNote.description}");
+
+      updatedEntities.add(newNote);
     }
+    
     await batch.commit();
+    for (final note in updatedEntities) {
+      print(
+        'Note id=${note.id}, '
+        'title=${note.title}, '
+        'label=${note.label?.id}',
+      );
+    }
+
     return updatedEntities;
   }
 

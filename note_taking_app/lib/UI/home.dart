@@ -8,6 +8,7 @@ import 'package:note_taking_app/UI/Navigation/named_routes.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
 import 'package:note_taking_app/UI/SharedComponents/card.dart';
 import 'package:note_taking_app/UI/SharedComponents/extended_card.dart';
+import 'package:note_taking_app/UI/SharedComponents/loading_state.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/create_note.dart';
 import 'package:note_taking_app/UI/create_task.dart';
@@ -28,7 +29,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _requestNotificationPermission();
-    _loadData();
   }
 
   Future<void> _loadData() async {
@@ -43,7 +43,10 @@ class _HomeScreenState extends State<HomeScreen> {
         >()
         ?.requestNotificationsPermission();
     if (permissionGranted == null || !permissionGranted) {
-      CustomDialog.showError("Error", "Failed to receive permission for notification.");
+      CustomDialog.showError(
+        "Error",
+        "Failed to receive permission for notification.",
+      );
     }
   }
 
@@ -59,54 +62,55 @@ class _HomeScreenState extends State<HomeScreen> {
         titleText: 'Notes App',
       ),
       endDrawer: const HamburgerMenu(),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  SizedBox(
-                    width: (MediaQuery.of(context).size.width - 30) / 2,
-                    child: CustomCard(
-                      icon: Icons.note,
-                      label: 'Notes',
-                      onTap: () => Get.toNamed(Routes.notes),
+      body: RefreshIndicator(
+        onRefresh: _loadData,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    SizedBox(
+                      width: (MediaQuery.of(context).size.width - 30) / 2,
+                      child: CustomCard(
+                        icon: Icons.note,
+                        label: 'Notes',
+                        onTap: () => Get.toNamed(Routes.notes),
+                      ),
                     ),
-                  ),
-                  SizedBox(
-                    width: (MediaQuery.of(context).size.width - 30) / 2,
-                    child: CustomCard(
-                      icon: Icons.task_alt,
-                      label: 'Tasks',
-                      onTap: () => Get.toNamed(Routes.tasks),
+                    SizedBox(
+                      width: (MediaQuery.of(context).size.width - 30) / 2,
+                      child: CustomCard(
+                        icon: Icons.task_alt,
+                        label: 'Tasks',
+                        onTap: () => Get.toNamed(Routes.tasks),
+                      ),
                     ),
-                  ),
-                  SizedBox(
-                    width: (MediaQuery.of(context).size.width - 30) / 2,
-                    child: CustomCard(
-                      icon: Icons.add_outlined,
-                      label: 'Add Note',
-                      onTap: () => Get.toNamed(Routes.createNote),
+                    SizedBox(
+                      width: (MediaQuery.of(context).size.width - 30) / 2,
+                      child: CustomCard(
+                        icon: Icons.add_outlined,
+                        label: 'Add Note',
+                        onTap: () => Get.toNamed(Routes.createNote),
+                      ),
                     ),
-                  ),
-                  SizedBox(
-                    width: (MediaQuery.of(context).size.width - 30) / 2,
-                    child: CustomCard(
-                      icon: Icons.add_outlined,
-                      label: 'Add Task',
-                      onTap: () => Get.toNamed(Routes.createTask),
+                    SizedBox(
+                      width: (MediaQuery.of(context).size.width - 30) / 2,
+                      child: CustomCard(
+                        icon: Icons.add_outlined,
+                        label: 'Add Task',
+                        onTap: () => Get.toNamed(Routes.createTask),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
+                  ],
+                ),
+                const SizedBox(height: 10),
 
-              Obx(() {
-                return Padding(
+                Padding(
                   padding: const EdgeInsets.all(10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,41 +120,48 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: Theme.of(context).textTheme.bodyLarge,
                       ),
 
-                      if (noteController.list.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: Text(
-                            'No recent notes found.',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodyLarge!.copyWith(color: Colors.red),
-                          ),
-                        )
-                      else
-                        ListView.builder(
-                          padding: EdgeInsets.zero,
-                          shrinkWrap: true,
-                          physics: NeverScrollableScrollPhysics(),
-                          itemCount: noteController.mostRecent.length,
-                          itemBuilder: (context, index) {
-                            final note = noteController.mostRecent[index];
+                      Obx(() {
+                        if (noteController.isLoading.value) {
+                          return LoadingShimmer(itemCount: 3);
+                        } else if (noteController.list.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Text(
+                              'No recent notes found.',
+                              style: Theme.of(context).textTheme.bodyLarge!
+                                  .copyWith(color: Colors.red),
+                            ),
+                          );
+                        } else {
+                          return ListView.builder(
+                            padding: EdgeInsets.zero,
+                            shrinkWrap: true,
+                            physics: NeverScrollableScrollPhysics(),
+                            itemCount: noteController.mostRecent.length,
+                            itemBuilder: (context, index) {
+                              final note = noteController.mostRecent[index];
 
-                            return CustomExtendedCard(
-                              title: note.title,
-                              content: [
-                                if (note.searchableContent != null)
-                                  note.searchableContent!,
-                                DateFormat.yMd().format(note.createdAt),
-                              ],
-                              otherDetails: [note.label?.name ?? ''],
-                              onTap: () {
-                                Get.to(
-                                  NoteDetailScreen(mode: Mode.edit, note: note),
-                                );
-                              },
-                            );
-                          },
-                        ),
+                              return CustomExtendedCard(
+                                title: note.title,
+                                content: [
+                                  if (note.searchableContent != null)
+                                    note.searchableContent!,
+                                  DateFormat.yMd().format(note.createdAt),
+                                ],
+                                otherDetails: [note.label?.name ?? ''],
+                                onTap: () {
+                                  Get.to(
+                                    NoteDetailScreen(
+                                      mode: Mode.edit,
+                                      note: note,
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        }
+                      }),
 
                       Padding(
                         padding: const EdgeInsets.only(top: 20),
@@ -160,8 +171,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
-                      if (taskController.list.isEmpty)
-                        Padding(
+                      Obx(() {
+                      if (taskController.isLoading.value) {
+                        return LoadingShimmer(itemCount: 3);
+                      } else if (taskController.list.isEmpty) {
+                        return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           child: Text(
                             'No recent tasks found.',
@@ -169,9 +183,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               context,
                             ).textTheme.bodyLarge!.copyWith(color: Colors.red),
                           ),
-                        )
-                      else
-                        ListView.builder(
+                        );
+                      }
+                      else {
+                        return ListView.builder(
                           shrinkWrap: true,
                           physics: NeverScrollableScrollPhysics(),
                           itemCount: taskController.mostRecent.length,
@@ -192,12 +207,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                             );
                           },
-                        ),
+                        );
+                      }
+                      })
                     ],
                   ),
-                );
-              }),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

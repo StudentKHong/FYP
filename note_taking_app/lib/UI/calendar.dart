@@ -6,6 +6,7 @@ import 'package:note_taking_app/Controller/task_controller.dart';
 import 'package:note_taking_app/Model/Models/task_model.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
 import 'package:note_taking_app/UI/SharedComponents/extended_card.dart';
+import 'package:note_taking_app/UI/SharedComponents/loading_state.dart';
 import 'package:note_taking_app/UI/create_note.dart';
 import 'package:note_taking_app/UI/create_task.dart';
 
@@ -61,76 +62,85 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return Scaffold(
       appBar: CustomAppBar(titleText: 'Calendar'),
       endDrawer: const HamburgerMenu(),
-      body: Column(
-        children: [
-          CalendarDatePicker(
-            initialDate: DateTime.now(),
-            currentDate: selectedDate,
-            firstDate: DateTime(DateTime.now().year - 10),
-            lastDate: DateTime(DateTime.now().year + 10, 12, 31),
-            onDateChanged: (newDate) {
-              setState(() {
-                selectedDate = newDate;
-              });
-              _loadTaskForDate(newDate);
-            },
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    width: 1,
-                    color: Theme.of(context).textTheme.bodyMedium!.color!,
+      body: RefreshIndicator(
+        onRefresh: () async => _loadTaskForDate(selectedDate),
+        child: Column(
+          children: [
+            CalendarDatePicker(
+              initialDate: DateTime.now(),
+              currentDate: selectedDate,
+              firstDate: DateTime(DateTime.now().year - 10),
+              lastDate: DateTime(DateTime.now().year + 10, 12, 31),
+              onDateChanged: (newDate) {
+                setState(() {
+                  selectedDate = newDate;
+                });
+                _loadTaskForDate(newDate);
+              },
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      width: 1,
+                      color: Theme.of(context).textTheme.bodyMedium!.color!,
+                    ),
                   ),
-                ),
-                child: Column(
-                  children: [
-                    Text('Tasks', style: Theme.of(context).textTheme.bodyLarge),
-                    Divider(),
-                    Text(
-                      'Date: ${DateFormat('EEEE, MMMM d, yyyy').format(selectedDate)}',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: Obx(() {
-                        final tasks = taskController.filteredList;
-                        if (tasks.isEmpty) {
-                          return Center(
-                            child: Text(
-                              "No tasks for this day.",
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          );
-                        }
-                        return ListView.builder(
-                          itemCount: taskController.filteredList.length,
-                          itemBuilder: (context, index) {
-                            final item = taskController.filteredList[index];
-                            return CustomExtendedCard(
-                              title: item.name,
-                              status: item.status,
-                              content: [
-                                item.description ?? '',
-                                _formatDateTime(item),
-                              ],
-                              onTap: () => Get.to(
-                                TaskDetailScreen(mode: Mode.edit, task: item),
-                              ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Tasks',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                      Divider(),
+                      Text(
+                        'Date: ${DateFormat('EEEE, MMMM d, yyyy').format(selectedDate)}',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: Obx(() {
+                          final tasks = taskController.filteredList;
+
+                          if (taskController.isLoading.value && tasks.isEmpty) {
+                            return LoadingShimmer(itemCount: 2,);
+                          }
+
+                          if (tasks.isEmpty) {
+                            return EmptyState(
+                              icon: Icons.task_outlined,
+                              message: "No tasks on this day.",
                             );
-                          },
-                        );
-                      }),
-                    ),
-                  ],
+                          }
+                          return ListView.builder(
+                            itemCount: taskController.filteredList.length,
+                            itemBuilder: (context, index) {
+                              final item = taskController.filteredList[index];
+                              return CustomExtendedCard(
+                                title: item.name,
+                                status: item.status,
+                                content: [
+                                  item.description ?? '',
+                                  _formatDateTime(item),
+                                ],
+                                onTap: () => Get.to(
+                                  TaskDetailScreen(mode: Mode.edit, task: item),
+                                ),
+                              );
+                            },
+                          );
+                        }),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

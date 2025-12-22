@@ -6,22 +6,23 @@ import 'package:note_taking_app/Model/Repository/class_repository.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 
 class ClassController extends Controller<Class> {
-  final AuthenticationController _authenticationController = Get.find<AuthenticationController>();
+  final AuthenticationController _authenticationController =
+      Get.find<AuthenticationController>();
   final ClassRepository _classRepository = Get.find<ClassRepository>();
 
-  ClassController()
-    : super(repository: Get.find<ClassRepository>());
+  ClassController() : super(repository: Get.find<ClassRepository>());
 
   @override
   void onInit() {
     super.onInit();
 
-    final AuthenticationController authController = Get.find<AuthenticationController>();
+    final AuthenticationController authController =
+        Get.find<AuthenticationController>();
     ever(authController.user, (user) {
       watchAllSubscription?.cancel();
       watchAllCountSubscription?.cancel();
       watchAllSubscription?.cancel();
-      
+
       if (user != null) {
         getAll();
         getAllCount();
@@ -40,6 +41,7 @@ class ClassController extends Controller<Class> {
 
   Future<Class?> join(String code) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       _authenticationController.checkAuthentication();
 
@@ -55,28 +57,41 @@ class ClassController extends Controller<Class> {
         errorMessage.value = ex.toString();
       }
       return null;
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> leave(String classId) async {
     try {
+      isLoading.value = true;
       errorMessage.value = "";
       _authenticationController.checkAuthentication();
-      
+
       await _classRepository.leave(classId);
       list.removeWhere((item) => item.id == classId);
     } catch (ex) {
       errorMessage.value = "Something went wrong.";
+    } finally {
+      isLoading.value = false;
     }
   }
 
   @override
   void getAllCount() {
+    isLoading.value = true;
     errorMessage.value = "";
     watchAllCountSubscription?.cancel();
-    watchAllCountSubscription = repository.watchAllCount().listen((count) {
-      totalCount.value = count;
-    }, onError: (ex) => errorMessage.value = ex.toString());
+    watchAllCountSubscription = repository.watchAllCount().listen(
+      (count) {
+        totalCount.value = count;
+        isLoading.value = false;
+      },
+      onError: (ex) {
+        errorMessage.value = ex.toString();
+        isLoading.value = false;
+      },
+    );
   }
 
   @override

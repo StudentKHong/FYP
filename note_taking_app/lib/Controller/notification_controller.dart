@@ -5,10 +5,12 @@ import 'package:note_taking_app/Controller/auth_controller.dart';
 import 'package:note_taking_app/Model/Models/notification_model.dart';
 import 'package:note_taking_app/Model/Repository/notification_repository.dart';
 
-class NotificationController extends GetxController{
+class NotificationController extends GetxController {
   var list = <AppNotification>[].obs;
   var totalCount = 0.obs;
   var errorMessage = "".obs;
+  var isLoading = false.obs;
+
   final NotificationRepository _notificationRepository =
       Get.find<NotificationRepository>();
 
@@ -19,11 +21,12 @@ class NotificationController extends GetxController{
   void onInit() {
     super.onInit();
 
-    final AuthenticationController authController = Get.find<AuthenticationController>();
+    final AuthenticationController authController =
+        Get.find<AuthenticationController>();
     ever(authController.user, (user) {
       _getAllSubscription?.cancel();
       _getCountSubscription?.cancel();
-      
+
       if (user != null) {
         getAll();
         getAllCount();
@@ -44,14 +47,22 @@ class NotificationController extends GetxController{
   };
 
   Future<void> getAll() async {
+    isLoading.value = true;
     errorMessage.value = "";
     _getAllSubscription?.cancel();
     _getAllSubscription = _notificationRepository
         .watchAll()
         .cast<List<AppNotification>>()
-        .listen((data) {
-          list.assignAll(data);
-        }, onError: (ex) => errorMessage.value = ex.toString());
+        .listen(
+          (data) {
+            list.assignAll(data);
+            isLoading.value = false;
+          },
+          onError: (ex) {
+            errorMessage.value = ex.toString();
+            isLoading.value = false;
+          },
+        );
   }
 
   Future<void> markReadStatus(String notificationId, bool isRead) async {
@@ -67,26 +78,37 @@ class NotificationController extends GetxController{
       list.refresh();
 
       try {
+        isLoading.value = true;
         errorMessage.value = "";
         await _notificationRepository.updateReadStatus(currentNotification);
       } catch (ex) {
         errorMessage.value = "Something went wrong.";
+      } finally {
+        isLoading.value = false;
       }
     }
   }
 
   void getAllCount() {
+    isLoading.value = true;
     errorMessage.value = "";
     _getCountSubscription?.cancel();
-    _getCountSubscription = _notificationRepository.watchAllCount().listen((
-      data,
-    ) {
-      totalCount.value = data;
-    }, onError: (ex) => errorMessage.value = ex.toString());
+    _getCountSubscription = _notificationRepository.watchAllCount().listen(
+      (data) {
+        totalCount.value = data;
+        isLoading.value = false;
+      },
+      onError: (ex) {
+        errorMessage.value = ex.toString();
+        isLoading.value = false;
+      },
+    );
   }
 
   Future<AppNotification?> create(AppNotification appNotification) async {
-    final createdNotification = await _notificationRepository.create(appNotification) as AppNotification;
+    final createdNotification =
+        await _notificationRepository.create(appNotification)
+            as AppNotification;
     list.refresh();
     return createdNotification;
   }
