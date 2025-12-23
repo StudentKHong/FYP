@@ -205,86 +205,94 @@ class NoteRepository extends UserRepository<Note> {
 
   @override
   Future<List<Note>> edit(List<Note> entities) async {
-    final batch = FirebaseFirestore.instance.batch();
+    try {
+      final batch = FirebaseFirestore.instance.batch();
 
-    List<Note> updatedEntities = [];
-    for (var entity in entities) {
-      if (entity.id == null) {
-        continue;
-      }
-
-      // Retrieve old note.
-      Note? oldNote;
-      try {
-        oldNote = Get.find<NoteController>().list.firstWhere(
-          (note) => note.id == entity.id,
-        );
-      } catch (_) {}
-
-      if (oldNote == null) {
-        final document = await collection
-            .doc(entity.id)
-            .get(GetOptions(source: Source.cache));
-        if (document.exists) {
-          oldNote = fromFirestore(document);
-        } else {
+      List<Note> updatedEntities = [];
+      for (var entity in entities) {
+        if (entity.id == null) {
           continue;
         }
-      }
 
-      Note newNote = entity.copyWith();
-      // Update count of old label and new label.
-      // If new label does not exist, create new.
-      final labelCollection = FirebaseFirestore.instance.collection('labels');
+        // Retrieve old note.
+        Note? oldNote;
+        try {
+          oldNote = Get.find<NoteController>().list.firstWhere(
+            (note) => note.id == entity.id,
+          );
+        } catch (_) {}
 
-      final oldLabelId = oldNote.label?.id;
-      final newLabelId = entity.label?.id;
-
-      if (oldLabelId != newLabelId) {
-        if (oldLabelId != null) {
-          batch.set(labelCollection.doc(oldLabelId), {
-            'count': FieldValue.increment(-1),
-          }, SetOptions(merge: true));
-        }
-        if (newNote.label != null) {
-          if (newLabelId != null && newLabelId.isNotEmpty) {
-            batch.set(labelCollection.doc(newLabelId), {
-              'count': FieldValue.increment(1),
-            }, SetOptions(merge: true));
+        if (oldNote == null) {
+          final document = await collection
+              .doc(entity.id)
+              .get(GetOptions(source: Source.cache));
+          if (document.exists) {
+            oldNote = fromFirestore(document);
           } else {
-            final documentReference = labelCollection.doc();
-            batch.set(documentReference, newNote.label!.toMap());
-            final newLabel = newNote.label!.copyWith(id: documentReference.id);
-            newNote = newNote.copyWith(label: newLabel);
+            continue;
           }
         }
+
+        Note newNote = entity.copyWith();
+        // Update count of old label and new label.
+        // If new label does not exist, create new.
+        final labelCollection = FirebaseFirestore.instance.collection('labels');
+
+        final oldLabelId = oldNote.label?.id;
+        final newLabelId = entity.label?.id;
+
+        if (oldLabelId != newLabelId) {
+          if (oldLabelId != null) {
+            batch.set(labelCollection.doc(oldLabelId), {
+              'count': FieldValue.increment(-1),
+            }, SetOptions(merge: true));
+          }
+          if (newNote.label != null) {
+            if (newLabelId != null && newLabelId.isNotEmpty) {
+              batch.set(labelCollection.doc(newLabelId), {
+                'count': FieldValue.increment(1),
+              }, SetOptions(merge: true));
+            } else {
+              final documentReference = labelCollection.doc();
+              batch.set(documentReference, newNote.label!.toMap());
+              final newLabel = newNote.label!.copyWith(
+                id: documentReference.id,
+              );
+              newNote = newNote.copyWith(label: newLabel);
+            }
+          }
+        }
+
+        // Update note.
+        final documentReference = collection.doc(newNote.id);
+        final dataToUpdate = newNote.toMap();
+        dataToUpdate.remove('id');
+        batch.set(documentReference, dataToUpdate, SetOptions(merge: true));
+
+        print("New Note: ${newNote.id}");
+        print("New Note: ${newNote.name}");
+        print("New Note (Label): ${newNote.label?.id}");
+        print("New Note (Label): ${newNote.label?.name}");
+        print("New Note: ${newNote.description}");
+
+        updatedEntities.add(newNote);
       }
 
-      // Update note.
-      final documentReference = collection.doc(newNote.id);
-      final dataToUpdate = newNote.toMap();
-      dataToUpdate.remove('id');
-      batch.set(documentReference, dataToUpdate, SetOptions(merge: true));
+      await batch.commit();
+      for (final note in updatedEntities) {
+        print(
+          'Note id=${note.id}, '
+          'title=${note.title}, '
+          'label=${note.label?.id}',
+        );
+      }
 
-      print("New Note: ${newNote.id}");
-      print("New Note: ${newNote.name}");
-      print("New Note (Label): ${newNote.label?.id}");
-      print("New Note (Label): ${newNote.label?.name}");
-      print("New Note: ${newNote.description}");
-
-      updatedEntities.add(newNote);
+      return updatedEntities;
+    } catch (ex, stackTrace) {
+      print("ERROR during batch edit: $ex");
+      print("Stack trace: $stackTrace");
+      rethrow;
     }
-    
-    await batch.commit();
-    for (final note in updatedEntities) {
-      print(
-        'Note id=${note.id}, '
-        'title=${note.title}, '
-        'label=${note.label?.id}',
-      );
-    }
-
-    return updatedEntities;
   }
 
   Future<Note> editShared(Note note, String groupId, String groupType) async {

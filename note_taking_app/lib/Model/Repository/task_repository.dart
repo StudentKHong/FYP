@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/label_controller.dart';
+import 'package:note_taking_app/Controller/task_controller.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
 import 'package:note_taking_app/Model/Models/task_model.dart';
 import 'package:note_taking_app/Model/Repository/crud_repository.dart';
@@ -209,27 +210,50 @@ class TaskRepository extends UserRepository<Task> {
       if (entity.id == null) {
         continue;
       }
-      // Capture old document snapshot. (For updating the old label's count.)
-      final oldSnapshot = await collection.doc(entity.id).get();
-      final oldTask = fromFirestore(oldSnapshot);
-      final oldLabelId = oldTask.label?.id;
 
-      // Update old and current labels' counts.
-      final oldExists = Get.find<LabelController>().taskLabels.any((label) => label.id == oldLabelId);
-      final matchExisting = Get.find<LabelController>().taskLabels.any(
-        (label) => label.id == entity.label?.id,
-      );
-      if (oldLabelId != entity.label?.id) {
-        final LabelRepository labelRepository = Get.find<LabelRepository>();
-        if (oldLabelId != null && oldExists) {
-          labelRepository.decrementCount(oldLabelId, 1);
+      // Retrieve old note.
+      Task? oldTask;
+      try {
+        oldTask = Get.find<TaskController>().list.firstWhere(
+          (task) => task.id == entity.id,
+        );
+      } catch (_) {}
+
+      if (oldTask == null) {
+        final document = await collection
+            .doc(entity.id)
+            .get(GetOptions(source: Source.cache));
+        if (document.exists) {
+          oldTask = fromFirestore(document);
+        } else {
+          continue;
         }
-        if (entity.label != null && entity.label?.id != null) {
-          if (matchExisting) {
-            labelRepository.incrementCount(entity.label!.id!, 1);
+      }
+
+      Task newTask = entity.copyWith();
+      // Update count of old label and new label.
+      // If new label does not exist, create new.
+      final labelCollection = FirebaseFirestore.instance.collection('labels');
+
+      final oldLabelId = oldTask.label?.id;
+      final newLabelId = entity.label?.id;
+
+      if (oldLabelId != newLabelId) {
+        if (oldLabelId != null) {
+          batch.set(labelCollection.doc(oldLabelId), {
+            'count': FieldValue.increment(-1),
+          }, SetOptions(merge: true));
+        }
+        if (newTask.label != null) {
+          if (newLabelId != null && newLabelId.isNotEmpty) {
+            batch.set(labelCollection.doc(newLabelId), {
+              'count': FieldValue.increment(1),
+            }, SetOptions(merge: true));
           } else {
-            final createdLabel = await labelRepository.create(entity.label!);
-            entity = entity.copyWith(label: createdLabel);
+            final documentReference = labelCollection.doc();
+            batch.set(documentReference, newTask.label!.toMap());
+            final newLabel = newTask.label!.copyWith(id: documentReference.id);
+            newTask = newTask.copyWith(label: newLabel);
           }
         }
       }

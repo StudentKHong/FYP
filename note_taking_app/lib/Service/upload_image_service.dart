@@ -16,6 +16,8 @@ import 'package:path_provider/path_provider.dart';
 class UploadImageService extends GetxService {
   final _queue = <Map<String, dynamic>>[].obs;
   final _queueFileName = 'pending_image_uploads.json';
+  final _deletionQueue = <Map<String, dynamic>>[].obs;
+  final _deletionQueueFileName = 'pending_image_deletions.json';
   var hasError = false.obs;
   final NoteController noteController = Get.find<NoteController>();
   final ConnectivityService connectivityService =
@@ -25,8 +27,72 @@ class UploadImageService extends GetxService {
   Future<void> onInit() async {
     super.onInit();
     await _loadQueue();
+    await _loadDeletionQueue();
     _listenToConnectionChanges();
     await attemptUpload();
+    await processDeletionQueue();
+  }
+
+  Future<void> queueImageDeletion(String imageUrl) async {
+    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('gs://')) {
+      try {
+        await File(imageUrl).delete();
+      } catch (ex) {
+        throw Exception("Failed to delete local file: $ex");
+      }
+      return;
+    }
+
+    final entry = {
+      "url": imageUrl,
+      "timestamp": DateTime.now().millisecondsSinceEpoch.toString(),
+    };
+    _deletionQueue.add(entry);
+    await _saveDeletionQueue();
+  }
+
+  Future<void> _saveDeletionQueue() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/$_deletionQueueFileName');
+      await file.writeAsString(jsonEncode(_deletionQueue));
+    } catch (ex) {
+      throw Exception("Failed to save deletion queue: $ex");
+    }
+  }
+
+  // Load queue from local file.
+  Future<void> _loadDeletionQueue() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/$_deletionQueueFileName');
+      if (await file.exists()) {
+        final jsonString = await file.readAsString();
+        final List list = jsonDecode(jsonString);
+        _queue.assignAll(list.map((item) => Map<String, dynamic>.from(item)));
+      }
+    } catch (ex) {
+      CustomDialog.showError("Error", "Failed to load deletion queue.");
+    }
+  }
+
+  Future<void> processDeletionQueue() async {
+    if (!connectivityService.isOnline.value) return;
+
+    for (int i = _deletionQueue.length - 1; i >= 0; i--) {
+      final entry = _deletionQueue[i];
+      final url = entry["url"] as String?;
+      if (url == null) continue;
+
+      try {
+        final documentReference = FirebaseStorage.instance.refFromURL(url);
+        await documentReference.delete();
+        _deletionQueue.removeAt(i);
+      } catch (ex) {
+        throw Exception("Failed to process deletion: $ex");
+      }
+    }
+    await _saveDeletionQueue();
   }
 
   Future<void> queueUpload({
@@ -46,10 +112,8 @@ class UploadImageService extends GetxService {
 
   Future<void> attemptUpload() async {
     for (int i = 0; i < 3; i++) {
+      if (!connectivityService.isOnline.value) return;
       if (_queue.isNotEmpty && connectivityService.isOnline.value) {
-        // Check if connected to Internet.
-        if (!connectivityService.isOnline.value) return;
-
         final dataToUpload = List<Map<String, dynamic>>.from(_queue);
 
         // Retrieve data from queue.
@@ -119,7 +183,11 @@ class UploadImageService extends GetxService {
     final currentDeltaJson = jsonDecode(note.content!);
     final currentDelta = Delta.fromJson(currentDeltaJson);
 
-    await deleteImages(note: note, currentContentJson: note.content!);
+    await deleteImages(
+      note: note,
+      oldContentJson: initialContentJson,
+      currentContentJson: jsonEncode(currentDelta.toJson()),
+    );
 
     // Replace image path with download url.
     bool hasChanged = false;
@@ -173,10 +241,13 @@ class UploadImageService extends GetxService {
       (image) => !currentImages.contains(image),
     );
     for (final imageUrl in imagesToDelete) {
-      try {
-        final storageReference = FirebaseStorage.instance.refFromURL(imageUrl);
-        await storageReference.delete();
-      } catch (_) {}
+      if (imageUrl.startsWith('http') || imageUrl.startsWith('gs://')) {
+        await queueImageDeletion(imageUrl);
+      } else {
+        try {
+          await File(imageUrl).delete();
+        } catch (_) {}
+      }
     }
   }
 
@@ -184,6 +255,7 @@ class UploadImageService extends GetxService {
     connectivityService.connectionStream.listen((isOnline) async {
       if (isOnline) {
         await attemptUpload();
+        await processDeletionQueue();
       }
     });
   }

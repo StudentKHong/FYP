@@ -23,6 +23,7 @@ import 'package:note_taking_app/UI/SharedComponents/label_editor.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/SharedComponents/text_box.dart';
 import 'package:note_taking_app/UI/attachment.dart';
+import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:signature/signature.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
@@ -597,6 +598,18 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                         showClearFormat: false,
                         showSubscript: false,
                         showSuperscript: false,
+                        buttonOptions: QuillSimpleToolbarButtonOptions(
+                          base: QuillToolbarBaseButtonOptions(
+                            iconTheme: QuillIconTheme(
+                              iconButtonSelectedData: IconButtonData(
+                                color: Colors.black,
+                              ),
+                              iconButtonUnselectedData: IconButtonData(
+                                color: Theme.of(context).colorScheme.onPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
                         embedButtons: FlutterQuillEmbeds.toolbarButtons(
                           videoButtonOptions: null,
                           imageButtonOptions: QuillToolbarImageButtonOptions(
@@ -614,21 +627,24 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                               },
                               onImageInsertCallback:
                                   (imageUrl, controller) async {
-                                    controller.replaceText(
-                                      controller.selection.baseOffset,
-                                      0,
+                                    final index =
+                                        controller.selection.baseOffset;
+                                    controller.document.insert(
+                                      index,
                                       BlockEmbed.image(imageUrl),
+                                    );
+                                    controller.updateSelection(
                                       TextSelection.collapsed(
-                                        offset:
-                                            controller.selection.baseOffset + 1,
+                                        offset: index + 1,
                                       ),
+                                      ChangeSource.local,
                                     );
 
                                     final noteId = note?.id ?? controllerTag;
                                     final contentJson = jsonEncode(
                                       controller.document.toDelta().toJson(),
                                     );
-                                    uploadImageService.queueUpload(
+                                    await uploadImageService.queueUpload(
                                       localPath: imageUrl,
                                       noteId: noteId,
                                       currentContentJson: contentJson,
@@ -683,11 +699,25 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                                         .toPngBytes();
                                                 if (data != null) {
                                                   final directory =
-                                                      await getApplicationCacheDirectory();
+                                                      await getApplicationDocumentsDirectory();
                                                   final filePath =
                                                       '${directory.path}/drawing_${DateTime.now().millisecondsSinceEpoch}.png';
+                                                  await directory.create(
+                                                    recursive: true,
+                                                  );
                                                   final file = File(filePath);
                                                   await file.writeAsBytes(data);
+                                                  // Add after file.writeAsBytes
+                                                  print(
+                                                    "File exists: ${await file.exists()}",
+                                                  );
+                                                  print(
+                                                    "File path: ${file.path}",
+                                                  );
+
+                                                  print(
+                                                    "Saved drawing to: $filePath",
+                                                  );
 
                                                   Get.back(result: filePath);
                                                 }
@@ -725,7 +755,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                         .toDelta()
                                         .toJson(),
                                   );
-                                  uploadImageService.queueUpload(
+                                  await uploadImageService.queueUpload(
                                     localPath: result,
                                     noteId: noteId,
                                     currentContentJson: contentJson,

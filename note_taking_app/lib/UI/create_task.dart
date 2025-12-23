@@ -609,218 +609,243 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 const SizedBox(height: 10),
 
                 // Expected start datetime and end datetime of the task.
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 5),
-                  child: Card(
-                    margin: EdgeInsets.zero,
-                    color: Colors.grey,
-                    child: Column(
-                      children: [
-                        ListTile(
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                          leading: Icon(Icons.play_arrow, color: Colors.black),
-                          title: startDateTime != null
-                              ? Text(
-                                  DateFormat(
-                                    'MMM d, yyyy HH:mm',
-                                  ).format(startDateTime!),
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                )
-                              : Text(
-                                  'Start Date',
-                                  style: Theme.of(context).textTheme.bodyMedium!
-                                      .copyWith(color: Colors.white),
-                                ),
-                          trailing: widget.mode == Mode.view
-                              ? Icon(Icons.lock, color: Colors.black)
-                              : IconButton(
-                                  onPressed: () async {
-                                    DateTime? dateTime = await _pickDateTime();
-                                    if (dateTime != null) {
-                                      setState(() {
-                                        startDateTime = dateTime;
-                                        _updateHasChanged();
-                                        _recalculateReminderDateTime(
-                                          selectedReminder,
-                                        );
-                                      });
-                                    }
-                                  },
-                                  icon: Icon(
-                                    Icons.calendar_month,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                        ),
-
-                        Center(
-                          child: Text(
-                            '-',
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.surface,
-                            ),
-                          ),
-                        ),
-
-                        ListTile(
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                          leading: Icon(Icons.stop, color: Colors.black),
-                          title: endDateTime != null
-                              ? Text(
-                                  DateFormat(
-                                    'MMM d, yyyy HH:mm',
-                                  ).format(endDateTime!),
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                )
-                              : Text(
-                                  'End Date',
-                                  style: Theme.of(context).textTheme.bodyMedium!
-                                      .copyWith(color: Colors.white),
-                                ),
-                          trailing: widget.mode == Mode.view
-                              ? Icon(Icons.lock, color: Colors.black)
-                              : IconButton(
-                                  onPressed: () async {
-                                    DateTime? dateTime = await _pickDateTime();
-                                    if (dateTime != null) {
-                                      setState(() {
-                                        endDateTime = dateTime;
-                                        _updateHasChanged();
-                                        _recalculateReminderDateTime(
-                                          selectedReminder,
-                                        );
-                                      });
-                                    }
-                                  },
-                                  icon: Icon(
-                                    Icons.calendar_month,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Select reminder.
-                // Hide this if is view mode.
-                if (widget.mode != Mode.view &&
-                    widget.mode != Mode.editShared &&
-                    widget.mode != Mode.createShared)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
-                    child: Card(
-                      margin: EdgeInsets.zero,
-                      color: Colors.grey,
-                      child: ListTile(
-                        leading: Icon(Icons.notifications, color: Colors.black),
-                        title: Text(
-                          'Reminder:',
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodyMedium!.copyWith(color: Colors.white),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
+                ExpansionTile(
+                  title: Text("Show Additional Details"),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      child: Card(
+                        margin: EdgeInsets.zero,
+                        color: Colors.grey,
+                        child: Column(
                           children: [
-                            if (!notificationsEnabled)
-                              CustomInfoButton(
-                                color: Colors.red,
-                                infoDetails: [
-                                  Info(
-                                    text:
-                                        "You have disabled push notifications. Please enabled it in Settings.",
-                                    maxLines: 2,
-                                  ),
-                                ],
+                            ListTile(
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
                               ),
-                            const SizedBox(width: 10),
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: 3),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                color: Colors.grey.shade800,
+                              leading: Icon(
+                                Icons.play_arrow,
+                                color: Colors.black,
                               ),
-                              child: DropdownButton<String>(
-                                style: Theme.of(context).textTheme.bodyMedium,
-                                value: selectedReminder ?? 'None',
-                                items: _getReminderOptions(),
-                                onChanged: notificationsEnabled
-                                    ? (value) {
-                                        if (value == null) return;
-                                        setState(() {
-                                          selectedReminder = value;
-                                          hasChanged = true;
-                                          _recalculateReminderDateTime(
-                                            selectedReminder,
-                                          );
-                                        });
-                                      }
-                                    : null,
-                                disabledHint: notificationsEnabled
-                                    ? null
-                                    : Text(
-                                        selectedReminder ?? 'None',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodyMedium!
-                                            .copyWith(
-                                              color: Colors.grey.shade400,
-                                            ),
+                              title: startDateTime != null
+                                  ? Text(
+                                      DateFormat(
+                                        'MMM d, yyyy HH:mm',
+                                      ).format(startDateTime!),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodyMedium,
+                                    )
+                                  : Text(
+                                      'Start Date',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium!
+                                          .copyWith(color: Colors.white),
+                                    ),
+                              trailing: widget.mode == Mode.view
+                                  ? Icon(Icons.lock, color: Colors.black)
+                                  : IconButton(
+                                      onPressed: () async {
+                                        DateTime? dateTime =
+                                            await _pickDateTime();
+                                        if (dateTime != null) {
+                                          setState(() {
+                                            startDateTime = dateTime;
+                                            _updateHasChanged();
+                                            _recalculateReminderDateTime(
+                                              selectedReminder,
+                                            );
+                                          });
+                                        }
+                                      },
+                                      icon: Icon(
+                                        Icons.calendar_month,
+                                        color: Colors.black,
                                       ),
+                                    ),
+                            ),
+
+                            Center(
+                              child: Text(
+                                '-',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.surface,
+                                ),
                               ),
+                            ),
+
+                            ListTile(
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              leading: Icon(Icons.stop, color: Colors.black),
+                              title: endDateTime != null
+                                  ? Text(
+                                      DateFormat(
+                                        'MMM d, yyyy HH:mm',
+                                      ).format(endDateTime!),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodyMedium,
+                                    )
+                                  : Text(
+                                      'End Date',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium!
+                                          .copyWith(color: Colors.white),
+                                    ),
+                              trailing: widget.mode == Mode.view
+                                  ? Icon(Icons.lock, color: Colors.black)
+                                  : IconButton(
+                                      onPressed: () async {
+                                        DateTime? dateTime =
+                                            await _pickDateTime();
+                                        if (dateTime != null) {
+                                          setState(() {
+                                            endDateTime = dateTime;
+                                            _updateHasChanged();
+                                            _recalculateReminderDateTime(
+                                              selectedReminder,
+                                            );
+                                          });
+                                        }
+                                      },
+                                      icon: Icon(
+                                        Icons.calendar_month,
+                                        color: Colors.black,
+                                      ),
+                                    ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ),
 
-                // Select status.
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 5),
-                  child: Card(
-                    margin: EdgeInsets.zero,
-                    color: Colors.grey,
-                    child: ListTile(
-                      leading: Icon(Icons.abc, color: Colors.black),
-                      title: Text(
-                        'Status:',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium!.copyWith(color: Colors.white),
-                      ),
-                      trailing: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 3),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          color: Colors.grey.shade800,
+                    // Select reminder.
+                    // Hide this if is view mode.
+                    if (widget.mode != Mode.view &&
+                        widget.mode != Mode.editShared &&
+                        widget.mode != Mode.createShared)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 5),
+                        child: Card(
+                          margin: EdgeInsets.zero,
+                          color: Colors.grey,
+                          child: ListTile(
+                            leading: Icon(
+                              Icons.notifications,
+                              color: Colors.black,
+                            ),
+                            title: Text(
+                              'Reminder:',
+                              style: Theme.of(context).textTheme.bodyMedium!
+                                  .copyWith(color: Colors.white),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (!notificationsEnabled)
+                                  CustomInfoButton(
+                                    color: Colors.red,
+                                    infoDetails: [
+                                      Info(
+                                        text:
+                                            "You have disabled push notifications. Please enabled it in Settings.",
+                                        maxLines: 2,
+                                      ),
+                                    ],
+                                  ),
+                                const SizedBox(width: 10),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 3),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    color: Colors.grey.shade800,
+                                  ),
+                                  child: DropdownButton<String>(
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium,
+                                    value: selectedReminder ?? 'None',
+                                    items: _getReminderOptions(),
+                                    onChanged: notificationsEnabled
+                                        ? (value) {
+                                            if (value == null) return;
+                                            setState(() {
+                                              selectedReminder = value;
+                                              hasChanged = true;
+                                              _recalculateReminderDateTime(
+                                                selectedReminder,
+                                              );
+                                            });
+                                          }
+                                        : null,
+                                    disabledHint: notificationsEnabled
+                                        ? null
+                                        : Text(
+                                            selectedReminder ?? 'None',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodyMedium!
+                                                .copyWith(
+                                                  color: Colors.grey.shade400,
+                                                ),
+                                          ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        child: DropdownButton<Status>(
-                          style: Theme.of(context).textTheme.bodyMedium,
-                          value: status,
-                          items: _getStatusOptions(),
-                          onChanged: widget.mode == Mode.view
-                              ? null
-                              : (value) {
-                                  setState(() {
-                                    status = value;
-                                    hasChanged = true;
-                                  });
-                                },
-                          icon: widget.mode == Mode.view
-                              ? Icon(
-                                  Icons.lock,
-                                  color: Theme.of(
-                                    context,
-                                  ).textTheme.bodyMedium!.color,
-                                )
-                              : null,
+                      ),
+
+                    // Select status.
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      child: Card(
+                        margin: EdgeInsets.zero,
+                        color: Colors.grey,
+                        child: ListTile(
+                          leading: Icon(Icons.abc, color: Colors.black),
+                          title: Text(
+                            'Status:',
+                            style: Theme.of(context).textTheme.bodyMedium!
+                                .copyWith(color: Colors.white),
+                          ),
+                          trailing: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 3),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: Colors.grey.shade800,
+                            ),
+                            child: DropdownButton<Status>(
+                              style: Theme.of(context).textTheme.bodyMedium,
+                              value: status,
+                              items: _getStatusOptions(),
+                              onChanged: widget.mode == Mode.view
+                                  ? null
+                                  : (value) {
+                                      setState(() {
+                                        status = value;
+                                        hasChanged = true;
+                                      });
+                                    },
+                              icon: widget.mode == Mode.view
+                                  ? Icon(
+                                      Icons.lock,
+                                      color: Theme.of(
+                                        context,
+                                      ).textTheme.bodyMedium!.color,
+                                    )
+                                  : null,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
 
                 const SizedBox(height: 20),

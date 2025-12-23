@@ -268,8 +268,8 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
           }
         }
       }
-    } catch (e) {
-      errorMessage.value = e.toString();
+    } catch (ex) {
+      errorMessage.value = ex.toString();
     } finally {
       isLoading.value = false;
     }
