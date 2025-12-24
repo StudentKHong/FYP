@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -20,6 +19,7 @@ import 'package:note_taking_app/Model/Models/note_model.dart';
 import 'package:note_taking_app/Model/Models/task_model.dart';
 import 'package:note_taking_app/Model/Models/team_model.dart';
 import 'package:note_taking_app/UI/Navigation/named_routes.dart';
+import 'package:note_taking_app/UI/Navigation/ui_scaffold_state.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
 import 'package:note_taking_app/UI/SharedComponents/extended_card.dart';
 import 'package:note_taking_app/UI/SharedComponents/filter_popup.dart';
@@ -85,10 +85,10 @@ class ListScreen<T extends BaseEntity> extends StatefulWidget {
   });
 
   @override
-  State<ListScreen<T>> createState() => ListScreenState<T>();
+  State<ListScreen<T>> createState() => _ListScreenState<T>();
 }
 
-class ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
+class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
     with AutomaticKeepAliveClientMixin {
   final AuthenticationController authController =
       Get.find<AuthenticationController>();
@@ -395,6 +395,10 @@ class ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
 
   Widget _buildAddButton() {
     if (_selectionMode == SelectionMode.none) {
+      if (widget.pageType == ListScreenType.archivedNotes ||
+          widget.pageType == ListScreenType.archivedTasks) {
+        return const SizedBox.shrink();
+      }
       return widget.pageType == ListScreenType.classes ||
               widget.pageType == ListScreenType.teams
           ? AddButtonPopUp(
@@ -471,7 +475,7 @@ class ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
         leadingIcon: Icons.label,
         title: item.name,
         onTap: onTap,
-        hideTrailing: _selectionMode != SelectionMode.none
+        hideTrailing: _selectionMode != SelectionMode.none,
       );
     }
     return CustomExtendedCard(
@@ -519,6 +523,7 @@ class ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
             ),
           )
         : Scaffold(
+            key: Get.find<UIScaffoldState>().scaffoldKey,
             // Enable multi-deletion.
             appBar: widget.showAppBar
                 ? _selectionMode != SelectionMode.none
@@ -600,6 +605,12 @@ class ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
                                         );
                                       }
 
+                                      setState(() {
+                                        _selectedItems.clear();
+                                        _selectionMode = SelectionMode.none;
+                                      });
+                                    },
+                                    onActionComplete: () {
                                       setState(() {
                                         _selectedItems.clear();
                                         _selectionMode = SelectionMode.none;
@@ -773,7 +784,8 @@ class ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
                                       _selectionMode == SelectionMode.none
                                       ? () {
                                           setState(() {
-                                            _selectionMode = SelectionMode.regular;
+                                            _selectionMode =
+                                                SelectionMode.regular;
                                             _selectedItems.add(item);
                                           });
                                         }

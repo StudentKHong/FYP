@@ -75,16 +75,12 @@ class NotificationController extends GetxController {
 
       final updatedNotification = currentNotification.copyWith(isRead: isRead);
       list[index] = updatedNotification;
-      list.refresh();
 
       try {
-        isLoading.value = true;
         errorMessage.value = "";
-        await _notificationRepository.updateReadStatus(currentNotification);
+        await _notificationRepository.updateReadStatus(updatedNotification);
       } catch (ex) {
         errorMessage.value = "Something went wrong.";
-      } finally {
-        isLoading.value = false;
       }
     }
   }

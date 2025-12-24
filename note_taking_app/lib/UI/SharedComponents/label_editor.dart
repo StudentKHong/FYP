@@ -131,87 +131,94 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
     //                 ),
     //           )
     //           .toList();
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.5,
-      minChildSize: 0.5,
-      maxChildSize: 0.5,
-      builder: (context, scrollController) {
-        return Padding(
-          padding: EdgeInsets.all(10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (widget.withGenerateLabelSwitch)
-                Obx(
-                  () => CustomSwitch(
-                    title: 'Generate Label',
-                    textColor: Theme.of(context).colorScheme.onPrimary,
-                    infoDescription:
-                        "Generate label using Artificial Intelligence (AI). Do not enable this if note contains personal information.",
-                    isTitleLeading: true,
-                    switchSize: Scale.medium,
-                    isToggled: generateLabelEnabled.value,
-                    onChanged: (value) async {
-                      // Update UI to display the suggested label.
-                      generateLabelEnabled.value = value;
-                      widget.onToggled.call(value);
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.5,
+        minChildSize: 0.5,
+        maxChildSize: 0.5,
+        builder: (context, scrollController) {
+          return Padding(
+            padding: EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.withGenerateLabelSwitch)
+                  Obx(
+                    () => CustomSwitch(
+                      title: 'Generate Label',
+                      textColor: Theme.of(context).colorScheme.onPrimary,
+                      infoDescription:
+                          "Generate label using Artificial Intelligence (AI). Do not enable this if note contains personal information.",
+                      isTitleLeading: true,
+                      switchSize: Scale.medium,
+                      isToggled: generateLabelEnabled.value,
+                      onChanged: (value) async {
+                        // Update UI to display the suggested label.
+                        generateLabelEnabled.value = value;
+                        widget.onToggled.call(value);
 
-                      if (value) {
-                        await _loadSuggested();
-                      }
-                    },
-                    layout: LayoutMode.listTile,
+                        if (value) {
+                          await _loadSuggested();
+                        }
+                      },
+                      layout: LayoutMode.listTile,
+                    ),
                   ),
+                Divider(),
+                CustomSearchBar(
+                  searchController: _searchController,
+                  onSearch: (_) => onSearch(),
                 ),
-              Divider(),
-              CustomSearchBar(
-                searchController: _searchController,
-                onSearch: (_) => onSearch(),
-              ),
-              Obx(() {
-                final existingLabels = widget.type == ComponentType.note
-                    ? labelController.noteLabels
-                    : labelController.taskLabels;
-                final query = _searchController.text.toLowerCase();
-                final filteredExisting = existingLabels
-                    .where((label) => label.name.toLowerCase().contains(query))
-                    .toList();
+                Obx(() {
+                  final existingLabels = widget.type == ComponentType.note
+                      ? labelController.noteLabels
+                      : labelController.taskLabels;
+                  final query = _searchController.text.toLowerCase();
+                  final filteredExisting = existingLabels
+                      .where(
+                        (label) => label.name.toLowerCase().contains(query),
+                      )
+                      .toList();
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildCreateLabelOption(
-                      existing: existingLabels,
-                      suggested: newSuggestions,
-                    ),
-                    const SizedBox(height: 10),
-                    ..._buildSection(
-                      title: "Existing Labels",
-                      list: filteredExisting,
-                      chipAvatar: Icon(Icons.label, color: Colors.black),
-                      chipColor: Colors.green.shade300,
-                      isLoading: false,
-                    ),
-                    const SizedBox(height: 10),
-                    if (generateLabelEnabled.value && content.isNotEmpty)
-                      ..._buildSection(
-                        title: "Suggested Labels",
-                        list: labelController.suggestedLabels,
-                        chipAvatar: Icon(
-                          Icons.auto_awesome,
-                          color: Colors.black,
-                        ),
-                        chipColor: Colors.blue.shade300,
-                        isLoading: labelController.isLoading.value,
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildCreateLabelOption(
+                        existing: existingLabels,
+                        suggested: newSuggestions,
                       ),
-                  ],
-                );
-              }),
-            ],
-          ),
-        );
-      },
+                      const SizedBox(height: 10),
+                      ..._buildSection(
+                        title: "Existing Labels",
+                        list: filteredExisting,
+                        chipAvatar: Icon(Icons.label, color: Colors.black),
+                        chipColor: Colors.green.shade300,
+                        isLoading: false,
+                      ),
+                      const SizedBox(height: 10),
+                      if (generateLabelEnabled.value && content.isNotEmpty)
+                        ..._buildSection(
+                          title: "Suggested Labels",
+                          list: labelController.suggestedLabels,
+                          chipAvatar: Icon(
+                            Icons.auto_awesome,
+                            color: Colors.black,
+                          ),
+                          chipColor: Colors.blue.shade300,
+                          isLoading: labelController.isLoading.value,
+                        ),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -222,17 +229,23 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
     return Builder(
       builder: (context) {
         final keyword = _searchController.text.trim();
+        print("Search keyword: $keyword");
         if (keyword.isEmpty) return SizedBox.shrink();
 
         final lowerKeyword = keyword.toLowerCase();
         final matchExisting = existing.any(
           (label) => label.name.toLowerCase().trim() == lowerKeyword,
         );
+
         final matchSuggested = suggested.any(
           (label) => label.name.toLowerCase().trim() == lowerKeyword,
         );
+        print(
+          "Match existing: $matchExisting, Match suggested: $matchSuggested",
+        );
 
         if (!matchExisting && !matchSuggested) {
+          print("Triggered 'Create New Label'...");
           return Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
             child: ListTile(
@@ -347,9 +360,13 @@ class _CustomLabelEditorState extends State<CustomLabelEditor> {
       isScrollControlled: true,
       context: context,
       builder: (_) {
-        return _buildBottomSheet(
-          onSearch: () => setState(() {}),
-          modalSetState: (_) => setState(() {}),
+        return StatefulBuilder(
+          builder: (context, modalSetState) {
+            return _buildBottomSheet(
+              onSearch: () => modalSetState(() {}),
+              modalSetState: modalSetState,
+            );
+          },
         );
       },
     );

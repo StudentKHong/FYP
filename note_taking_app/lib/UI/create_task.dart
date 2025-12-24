@@ -11,7 +11,9 @@ import 'package:note_taking_app/Model/Models/enumeration.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
 import 'package:note_taking_app/Model/Models/notification_model.dart';
 import 'package:note_taking_app/Model/Models/task_model.dart';
+import 'package:note_taking_app/UI/Navigation/ui_scaffold_state.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
+import 'package:note_taking_app/UI/SharedComponents/confirmation_message.dart';
 import 'package:note_taking_app/UI/SharedComponents/info_button.dart';
 import 'package:note_taking_app/UI/SharedComponents/label_editor.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
@@ -49,6 +51,8 @@ class TaskDetailScreen extends StatefulWidget {
 }
 
 class _TaskDetailScreenState extends State<TaskDetailScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   late final String title;
   final options = NotificationController.options;
   bool toggleEnabled = false;
@@ -426,102 +430,153 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     }
   }
 
+  Future<void> _createTask({
+    required String title,
+    required String description,
+    required Function(Task? task) successAction,
+  }) async {
+    final isShared = widget.mode == Mode.createShared;
+    task = Task(
+      id: UniqueKey().toString(),
+      title: title,
+      description: description,
+      startDateTime: startDateTime,
+      endDateTime: endDateTime,
+      reminderDateTime: reminderDateTime,
+      status: status ?? Status.unknown,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      viewedAt: isShared ? null : DateTime.now(),
+      isPinned: false,
+      isArchived: isShared ? null : false,
+      label: isShared ? null : selectedLabel,
+      labelName: isShared ? selectedLabel?.name : null,
+    );
+
+    if (task != null) {
+      if (widget.mode == Mode.create) {
+        final createdTask = await taskController.create(task!);
+        task = createdTask;
+
+        await _scheduleReminder(createdTask!);
+      } else if (widget.mode == Mode.createShared &&
+          widget.groupId != null &&
+          widget.groupType != null) {
+        await taskController.shareMultiple(
+          [task!],
+          widget.groupId!,
+          widget.groupType!,
+        );
+      }
+    }
+
+    if (taskController.errorMessage.value.isNotEmpty) {
+      CustomDialog.showError("Error", taskController.errorMessage.value);
+      return;
+    }
+    CustomDialog.showSuccess("Success", "Successfully create task.");
+    successAction(task);
+  }
+
+  Future<void> _editTask({
+    required String title,
+    required String description,
+    required Function(Task? task) successAction,
+  }) async {
+    final isShared = widget.mode == Mode.createShared;
+    task = task!.copyWith(
+      title: title,
+      description: description,
+      startDateTime: startDateTime,
+      endDateTime: endDateTime,
+      reminderDateTime: reminderDateTime,
+      status: status,
+      label: isShared ? null : selectedLabel,
+      labelName: isShared ? selectedLabel?.name : null,
+      isViewed: isShared ? false : true,
+      isUpdated: true,
+      replaceReminder: true,
+    );
+
+    if (widget.mode == Mode.edit) {
+      taskController.edit([task!]);
+      await _scheduleReminder(task!);
+    } else if (widget.mode == Mode.editShared &&
+        widget.groupId != null &&
+        widget.groupType != null) {
+      await taskController.editShared(
+        task!,
+        widget.groupId!,
+        widget.groupType!,
+      );
+    }
+    if (taskController.errorMessage.value.isNotEmpty) {
+      CustomDialog.showError("Error", taskController.errorMessage.value);
+      return;
+    }
+    CustomDialog.showSuccess("Success", "Successfully edit task.");
+    successAction(task);
+  }
+
+  Future<void> _saveChanges({
+    required Function(Task? task) successAction,
+  }) async {
+    final title = titleController.text.trim();
+    final description = descriptionController.text.trim();
+    if (hasChanged && (widget.mode != Mode.view)) {
+      if (widget.mode == Mode.create || widget.mode == Mode.createShared) {
+        await _createTask(
+          title: title,
+          description: description,
+          successAction: successAction,
+        );
+      } else {
+        await _editTask(
+          title: title,
+          description: description,
+          successAction: successAction,
+        );
+      }
+    }
+    if (widget.mode == Mode.edit && !hasChanged) {
+      final viewedNote = task!.copyWith(isViewed: true);
+      taskController.edit([viewedNote]);
+      if (taskController.errorMessage.value.isNotEmpty) {
+        CustomDialog.showError("Error", taskController.errorMessage.value);
+      }
+    }
+  }
+
+  void _showUnsavedChangesDialog() {
+    buildConfirmationMessage(
+      context: context,
+      title: 'Unsaved Changes. Would you like to save changes?',
+      onTapOption1: () async => await _saveChanges(
+        successAction: (_) async {
+          Get.back();
+          Get.find<UIScaffoldState>().openDrawer();
+        },
+      ),
+      buttonText1: "Save",
+      colorForButton1: Theme.of(
+        context,
+      ).elevatedButtonTheme.style?.backgroundColor?.resolve({}),
+      buttonText2: "Cancel",
+      colorForButton2: Colors.grey,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-
-        if (hasChanged && widget.mode != Mode.view) {
-          final bool isForShared = widget.mode == Mode.createShared;
-          if (widget.mode == Mode.create || widget.mode == Mode.createShared) {
-            task = Task(
-              id: UniqueKey().toString(),
-              title: titleController.text.trim(),
-              description: descriptionController.text.trim(),
-              startDateTime: startDateTime,
-              endDateTime: endDateTime,
-              reminderDateTime: reminderDateTime,
-              status: status ?? Status.unknown,
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-              viewedAt: isForShared ? null : DateTime.now(),
-              isPinned: false,
-              isArchived: isForShared ? null : false,
-              label: isForShared ? null : selectedLabel,
-              labelName: isForShared ? selectedLabel?.name : null,
-            );
-
-            if (task != null) {
-              if (widget.mode == Mode.create) {
-                final createdTask = await taskController.create(task!);
-                task = createdTask;
-
-                await _scheduleReminder(createdTask!);
-              } else if (widget.mode == Mode.createShared &&
-                  widget.groupId != null &&
-                  widget.groupType != null) {
-                await taskController.shareMultiple(
-                  [task!],
-                  widget.groupId!,
-                  widget.groupType!,
-                );
-              }
-            }
-
-            if (taskController.errorMessage.value.isNotEmpty) {
-              CustomDialog.showError(
-                "Error",
-                taskController.errorMessage.value,
-              );
-              return;
-            }
-            CustomDialog.showSuccess("Success", "Successfully create task.");
-            Get.back(result: task);
-            return;
-          } else {
-            task = task!.copyWith(
-              title: titleController.text.trim(),
-              description: descriptionController.text.trim(),
-              startDateTime: startDateTime,
-              endDateTime: endDateTime,
-              reminderDateTime: reminderDateTime,
-              status: status,
-              label: isForShared ? null : selectedLabel,
-              labelName: isForShared ? selectedLabel?.name : null,
-              isViewed: isForShared ? false : true,
-              isUpdated: true,
-              replaceReminder: true,
-            );
-
-            if (widget.mode == Mode.edit) {
-              taskController.edit([task!]);
-              await _scheduleReminder(task!);
-            } else if (widget.mode == Mode.editShared &&
-                widget.groupId != null &&
-                widget.groupType != null) {
-              await taskController.editShared(
-                task!,
-                widget.groupId!,
-                widget.groupType!,
-              );
-            }
-            if (taskController.errorMessage.value.isNotEmpty) {
-              CustomDialog.showError(
-                "Error",
-                taskController.errorMessage.value,
-              );
-              return;
-            }
-            CustomDialog.showSuccess("Success", "Successfully edit task.");
-            Get.back(result: task);
-            return;
-          }
-        }
+        await _saveChanges(successAction: (task) => Get.back(result: task));
         Get.back();
       },
       child: Scaffold(
+        key: _scaffoldKey,
         appBar: CustomAppBar(
           titleText: title,
           actions:
@@ -548,6 +603,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 )
               : [],
           replaceDefaultActions: false,
+          onMenuTap: () {
+            if (hasChanged) {
+              _showUnsavedChangesDialog();
+            } else {
+              _scaffoldKey.currentState?.openEndDrawer();
+            }
+          },
         ),
         endDrawer: const HamburgerMenu(),
         body: SingleChildScrollView(

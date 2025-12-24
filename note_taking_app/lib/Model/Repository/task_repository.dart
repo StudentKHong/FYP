@@ -202,6 +202,21 @@ class TaskRepository extends UserRepository<Task> {
   }
 
   @override
+  Future<Task> create(Task entity) async {
+    Map<String, dynamic> data = entity.toMap();
+    data.remove('id');
+    final documentReference = await collection.addOfflineSafe(data);
+    final createdEntity = await documentReference.get();
+
+    // Transform data into Note object (causing label to be overriden).
+    // Restore the original label.
+    Task newTask = fromFirestore(createdEntity);
+    newTask = newTask.copyWith(label: entity.label);
+
+    return newTask;
+  }
+
+  @override
   Future<List<Task>> edit(List<Task> entities) async {
     final batch = FirebaseFirestore.instance.batch();
 
@@ -233,7 +248,10 @@ class TaskRepository extends UserRepository<Task> {
       Task newTask = entity.copyWith();
       // Update count of old label and new label.
       // If new label does not exist, create new.
-      final labelCollection = FirebaseFirestore.instance.collection('labels');
+      final labelCollection = FirebaseFirestore.instance
+          .collection('users')
+          .doc(authController.user.value?.uid)
+          .collection('labels');
 
       final oldLabelId = oldTask.label?.id;
       final newLabelId = entity.label?.id;
@@ -245,13 +263,19 @@ class TaskRepository extends UserRepository<Task> {
           }, SetOptions(merge: true));
         }
         if (newTask.label != null) {
-          if (newLabelId != null && newLabelId.isNotEmpty) {
+          final LabelController labelController = Get.find<LabelController>();
+          final isExisting = labelController.taskLabels.any(
+            (label) => label.id == newTask.label?.id,
+          );
+          if (isExisting) {
             batch.set(labelCollection.doc(newLabelId), {
               'count': FieldValue.increment(1),
             }, SetOptions(merge: true));
           } else {
             final documentReference = labelCollection.doc();
-            batch.set(documentReference, newTask.label!.toMap());
+            final labelMap = newTask.label!.toMap();
+            labelMap.remove('id');
+            batch.set(documentReference, labelMap);
             final newLabel = newTask.label!.copyWith(id: documentReference.id);
             newTask = newTask.copyWith(label: newLabel);
           }
@@ -259,12 +283,12 @@ class TaskRepository extends UserRepository<Task> {
       }
 
       // Update task.
-      final documentReference = collection.doc(entity.id);
-      final dataToUpdate = entity.toMap();
+      final documentReference = collection.doc(newTask.id);
+      final dataToUpdate = newTask.toMap();
       dataToUpdate.remove('id');
-      batch.update(documentReference, dataToUpdate);
+      batch.set(documentReference, dataToUpdate, SetOptions(merge: true));
 
-      updatedEntities.add(entity);
+      updatedEntities.add(newTask);
     }
     await batch.commit();
     return updatedEntities;

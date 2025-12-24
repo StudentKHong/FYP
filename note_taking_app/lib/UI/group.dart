@@ -44,8 +44,8 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
 
   final List<Note> _selectedNotes = [];
   final List<Task> _selectedTasks = [];
-  final noteListKey = GlobalKey<ListScreenState<Note>>();
-  final taskListKey = GlobalKey<ListScreenState<Task>>();
+  // final noteListKey = GlobalKey<ListScreenState<Note>>();
+  // final taskListKey = GlobalKey<ListScreenState<Task>>();
 
   late SelectionMode _selectionMode;
   late TabController _tabController;
@@ -235,7 +235,7 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
               controller: _tabController,
               children: [
                 ListScreen<Note>(
-                  key: noteListKey,
+                  // key: noteListKey,
                   keepAlive: true,
                   showAppBar: false,
                   title: '',
@@ -299,15 +299,13 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                   onSelectionChanged: (selected) {
                     _selectedNotes.clear();
                     _selectedNotes.addAll(selected.whereType<Note>());
-                    print('Selected Notes Length: ${_selectedNotes.length}');
-                    print('Selected Tasks Length: ${_selectedTasks.length}');
                   },
                   customFetchFunction: groupId != null
                       ? () => _noteController.getByGroup(groupId, groupType)
                       : null,
                 ),
                 ListScreen<Task>(
-                  key: taskListKey,
+                  // key: taskListKey,
                   keepAlive: true,
                   showAppBar: false,
                   title: '',
@@ -369,8 +367,6 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                   onSelectionChanged: (selected) {
                     _selectedTasks.clear();
                     _selectedTasks.addAll(selected.whereType<Task>());
-                    print('Selected Notes Length: ${_selectedNotes.length}');
-                    print('Selected Tasks Length: ${_selectedTasks.length}');
                   },
                   customFetchFunction: groupId != null
                       ? () => _taskController.getByGroup(groupId, groupType)

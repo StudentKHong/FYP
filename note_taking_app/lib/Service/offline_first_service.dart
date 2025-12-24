@@ -11,7 +11,6 @@ extension FirestoreOfflineSafe on DocumentReference {
 extension CollectionOfflineSafe on CollectionReference {
   Future<DocumentReference> addOfflineSafe(Map<String, dynamic> data) async {
     final documentReference = doc();
-    data['id'] = documentReference.id;
     documentReference.setOfflineSafe(data);
     return documentReference;
   }

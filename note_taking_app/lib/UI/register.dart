@@ -191,6 +191,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
+                    style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.grey.shade400)),
                     onPressed: () => Get.offAllNamed(Routes.login),
                     child: Text('Cancel'),
                   ),

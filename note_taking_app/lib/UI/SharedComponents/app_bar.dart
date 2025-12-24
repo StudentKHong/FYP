@@ -28,6 +28,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String? subtitle;
   final List<Widget>? actions;
   final bool replaceDefaultActions;
+  final VoidCallback? onMenuTap;
 
   const CustomAppBar({
     super.key,
@@ -37,6 +38,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.subtitle,
     this.actions,
     this.replaceDefaultActions = false,
+    this.onMenuTap
   });
 
   @override
@@ -73,7 +75,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               Padding(
                 padding: EdgeInsets.only(right: 16),
                 child: InkWell(
-                  onTap: () => Scaffold.of(context).openEndDrawer(),
+                  onTap: onMenuTap ?? () => Scaffold.of(context).openEndDrawer(),
                   child: Container(
                     width: 40,
                     height: 40,
@@ -132,74 +134,84 @@ class _HamburgerMenuState extends State<HamburgerMenu> {
         borderRadius: BorderRadius.circular(8),
         child: Material(
           color: Colors.white,
-          child: Obx(
-            () => ListView(
-              padding: EdgeInsets.all(10),
-              children: [
-                IconButton(
-                  icon: Icon(Icons.close, color: Colors.red),
-                  onPressed: Get.back,
-                ),
-                const SizedBox(height: 10),
-                ...NavigationButtons.buildDefaultNav(
-                  context: context,
-                  authController: authController,
-                  notificationCount: countController.notificationCount.value,
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 10, bottom: 5),
-                  child: Text(
-                    'Notes:',
-                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                ...NavigationButtons.buildNoteNav(
-                  context: context,
-                  noteLabels: labelController.noteLabels,
-                  totalCount: countController.notesCount.value,
-                  archivedCount: archivedNotesController.filteredList.length,
-                  noteController: noteController,
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 10, bottom: 5),
-                  child: Text(
-                    'Tasks:',
-                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                ...NavigationButtons.buildTaskNav(
-                  context: context,
-                  taskLabels: labelController.taskLabels,
-                  totalCount: countController.tasksCount.value,
-                  archivedCount: archivedTasksController.filteredList.length,
-                  taskController: taskController,
-                ),
-                if (!isGuest) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10, bottom: 5),
-                    child: Text(
-                      roleController.hasPermission(PermissionType.viewClass)
-                          ? "Classes"
-                          : "Teams",
-                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  ...NavigationButtons.buildGroupNav(
+          child: ListView(
+            padding: EdgeInsets.all(10),
+            children: [
+              IconButton(
+                icon: Icon(Icons.close, color: Colors.red),
+                onPressed: Get.back,
+              ),
+              const SizedBox(height: 10),
+              Obx(
+                () => Column(
+                  children: NavigationButtons.buildDefaultNav(
                     context: context,
-                    totalCount: countController.groupCount.value,
+                    authController: authController,
+                    notificationCount: countController.notificationCount.value,
                   ),
-                ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 5),
+                child: Text(
+                  'Notes:',
+                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Obx(
+                () => Column(
+                  children: NavigationButtons.buildNoteNav(
+                    context: context,
+                    noteLabels: labelController.noteLabels,
+                    totalCount: countController.notesCount.value,
+                    archivedCount: archivedNotesController.filteredList.length,
+                    noteController: noteController,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 5),
+                child: Text(
+                  'Tasks:',
+                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Obx(
+                () => Column(
+                  children: NavigationButtons.buildTaskNav(
+                    context: context,
+                    taskLabels: labelController.taskLabels,
+                    totalCount: countController.tasksCount.value,
+                    archivedCount: archivedTasksController.filteredList.length,
+                    taskController: taskController,
+                  ),
+                ),
+              ),
+              if (!isGuest) ...[
+                Padding(
+                  padding: const EdgeInsets.only(top: 10, bottom: 5),
+                  child: Text(
+                    roleController.hasPermission(PermissionType.viewClass)
+                        ? "Classes"
+                        : "Teams",
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                ...NavigationButtons.buildGroupNav(
+                  context: context,
+                  totalCount: countController.groupCount.value,
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -228,7 +240,7 @@ class NavigationButtons {
     String? trailingText,
     Color? tileColor,
     VoidCallback? onTap,
-    bool hideTrailing = false
+    bool hideTrailing = false,
   }) {
     final backgroundColor = tileColor ?? Colors.white;
     final textColor = AppTheme.getOptimalTextColor(backgroundColor);
@@ -242,20 +254,22 @@ class NavigationButtons {
           context,
         ).textTheme.bodyMedium!.copyWith(color: textColor),
       ),
-      trailing: hideTrailing ? null : Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (trailingText != null)
-            Text(
-              trailingText,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium!.copyWith(color: textColor),
+      trailing: hideTrailing
+          ? null
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (trailingText != null)
+                  Text(
+                    trailingText,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium!.copyWith(color: textColor),
+                  ),
+                Icon(Icons.arrow_forward_ios),
+              ],
             ),
-          Icon(Icons.arrow_forward_ios),
-        ],
-      ),
       onTap: onTap,
     );
   }
@@ -513,6 +527,7 @@ class AdditionalOptions {
     bool hideDelete = false,
     bool hideShare = false,
     void Function(List updatedItems)? onUpdate,
+    VoidCallback? onActionComplete,
   }) {
     if (notes == null && tasks == null && labels == null) {
       return [];
@@ -529,11 +544,21 @@ class AdditionalOptions {
               if (onUpdate == null) break;
               if (notes != null) {
                 onUpdate(
-                  notes.map((item) => item.copyWith(isPinned: true, isArchived: false)).toList(),
+                  notes
+                      .map(
+                        (item) =>
+                            item.copyWith(isPinned: true, isArchived: false),
+                      )
+                      .toList(),
                 );
               } else if (tasks != null) {
                 onUpdate(
-                  tasks.map((item) => item.copyWith(isPinned: true, isArchived: false)).toList(),
+                  tasks
+                      .map(
+                        (item) =>
+                            item.copyWith(isPinned: true, isArchived: false),
+                      )
+                      .toList(),
                 );
               }
               break;
@@ -553,11 +578,21 @@ class AdditionalOptions {
               if (onUpdate == null) break;
               if (notes != null) {
                 onUpdate(
-                  notes.map((item) => item.copyWith(isArchived: true, isPinned: false)).toList(),
+                  notes
+                      .map(
+                        (item) =>
+                            item.copyWith(isArchived: true, isPinned: false),
+                      )
+                      .toList(),
                 );
               } else if (tasks != null) {
                 onUpdate(
-                  tasks.map((item) => item.copyWith(isArchived: true, isPinned: false)).toList(),
+                  tasks
+                      .map(
+                        (item) =>
+                            item.copyWith(isArchived: true, isPinned: false),
+                      )
+                      .toList(),
                 );
               }
               break;
@@ -600,8 +635,12 @@ class AdditionalOptions {
                       .whereType<String>()
                       .toList();
 
-                  print("Note ids length (preparing delete): ${noteIds?.length}");
-                  print("Task ids length (preparing delete): ${taskIds?.length}");
+                  print(
+                    "Note ids length (preparing delete): ${noteIds?.length}",
+                  );
+                  print(
+                    "Task ids length (preparing delete): ${taskIds?.length}",
+                  );
                   // print("Task id: ${tasks?.first.id}");
                   // print("isForShared: $isForShared");
                   // print("noteIds: $noteIds");
@@ -610,11 +649,12 @@ class AdditionalOptions {
                   // print("controller type: ${controller.runtimeType}");
                   // print("groupId: $groupId, groupType: $groupType");
 
-                  if (isForShared &&
-                      noteIds != null) {
+                  if (isForShared && noteIds != null) {
                     if (groupId != null && groupType != null) {
                       print("Delete Shared Notes.");
-                      final noteController = Get.find<NoteController>(tag: 'group_${groupId}_note');
+                      final noteController = Get.find<NoteController>(
+                        tag: 'group_${groupId}_note',
+                      );
                       await noteController.deleteShared(
                         noteIds,
                         groupId,
@@ -622,11 +662,12 @@ class AdditionalOptions {
                       );
                     }
                   }
-                  if (isForShared &&
-                      taskIds != null) {
+                  if (isForShared && taskIds != null) {
                     if (groupId != null && groupType != null) {
                       print("Delete Shared Tasks.");
-                      final taskController = Get.find<TaskController>(tag: 'group_${groupId}_task');
+                      final taskController = Get.find<TaskController>(
+                        tag: 'group_${groupId}_task',
+                      );
                       await taskController.deleteShared(
                         taskIds,
                         groupId,
@@ -665,6 +706,7 @@ class AdditionalOptions {
                     "Success",
                     "Successfully delete selections.",
                   );
+                  onActionComplete?.call();
                 },
               );
               break;
@@ -700,15 +742,28 @@ class AdditionalOptions {
               buildConfirmationMessage(
                 context: context,
                 title: 'Share Confirmation',
-                buttonText1: (roleController.hasPermission(PermissionType.createShared) && isForShared) || !isForShared ? 'Share within app': null,
+                buttonText1:
+                    (roleController.hasPermission(
+                              PermissionType.createShared,
+                            ) &&
+                            isForShared) ||
+                        !isForShared
+                    ? 'Share within app'
+                    : null,
                 colorForButton1: Colors.grey,
                 buttonText2: 'Share outside app',
                 colorForButton2: Colors.grey,
                 onTapOption1: () async {
                   if (notes == null && tasks == null) {
                     CustomDialog.showError("Error", "Nothing to share.");
+                    return;
                   }
-                  ShareFeature.shareInApp(context, notes: notes, tasks: tasks);
+                  await ShareFeature.shareInApp(
+                    context,
+                    notes: notes,
+                    tasks: tasks,
+                  );
+                  onActionComplete?.call();
                 },
                 onTapOption2: () async {
                   final selectedList = [...?notes, ...?tasks];
@@ -720,7 +775,7 @@ class AdditionalOptions {
                     return;
                   }
                   final item = selectedList.first;
-                  ShareFeature.shareOutsideApp(
+                  await ShareFeature.shareOutsideApp(
                     context: context,
                     shareTitle: "Share my ${item is Note ? "note" : "task"}",
                     titleController:
@@ -728,6 +783,7 @@ class AdditionalOptions {
                         TextEditingController(text: item.name),
                     quillController: item is Note ? contentController : null,
                   );
+                  onActionComplete?.call();
                 },
               );
               break;

@@ -24,6 +24,7 @@ import 'package:note_taking_app/Model/Repository/team_repository.dart';
 import 'package:note_taking_app/Service/conectivity_service.dart';
 import 'package:note_taking_app/Service/upload_image_service.dart';
 import 'package:note_taking_app/UI/Navigation/named_routes.dart';
+import 'package:note_taking_app/UI/Navigation/ui_scaffold_state.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_theme.dart';
 import 'package:note_taking_app/UI/create_note.dart';
 import 'package:note_taking_app/UI/create_task.dart';
@@ -38,6 +39,22 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   initializeTimeZones();
   await Firebase.initializeApp();
+
+  // Initialize global repositories.
+  Get.put<AuthenticationRepository>(
+    AuthenticationRepository(),
+    permanent: true,
+  );
+
+  // Initialize global controllers.
+  Get.put(AuthenticationController(), permanent: true);
+  Get.put(NoteRepository(), permanent: true);
+  Get.put(TaskRepository(), permanent: true);
+  Get.put(LabelRepository(), permanent: true);
+  Get.put(ClassRepository(), permanent: true);
+  Get.put(TeamRepository(), permanent: true);
+  Get.put(NotificationRepository(), permanent: true);
+  Get.put(SettingRepository(), permanent: true);
 
   // Initialize notification settings.
   const AndroidInitializationSettings androidInitializationSettings =
@@ -69,38 +86,25 @@ void main() async {
     },
   );
 
-  // Initialize global repositories.
-  Get.put<AuthenticationRepository>(AuthenticationRepository());
-
   // Initialize global controllers.
-  Get.put(AuthenticationController(), permanent: true);
-  Get.put(NoteRepository(), permanent: true);
-  Get.put(TaskRepository(), permanent: true);
-  Get.put(LabelRepository(), permanent: true);
-  Get.put(ClassRepository(), permanent: true);
-  Get.put(TeamRepository(), permanent: true);
-  // Get.put(CountRepository(), permanent: true);
-  Get.put(NotificationRepository(), permanent: true);
-  Get.put(SettingRepository(), permanent: true);
-
-  // Initialize global controllers.
-  Get.lazyPut(() => RoleController(), fenix: true);
-  Get.lazyPut(() => LabelController(), fenix: true);
-  Get.lazyPut(() => NoteController(), fenix: true);
-  Get.lazyPut(() => TaskController(), fenix: true);
-  Get.lazyPut(() => ClassController(), fenix: true);
-  Get.lazyPut(() => TeamController(), fenix: true);
-  Get.lazyPut(() => NotificationController(), fenix: true);
-  Get.lazyPut(() => SettingController(), fenix: true);
-
-  Get.lazyPut(() => ThemeController(), fenix: true);
-
-  Get.lazyPut(() => CountController(), fenix: true);
+  Get.put(RoleController(), permanent: true);
+  Get.put(LabelController(), permanent: true);
+  Get.put(NoteController(), permanent: true);
+  Get.put(TaskController(), permanent: true);
+  Get.put(ClassController(), permanent: true);
+  Get.put(TeamController(), permanent: true);
+  Get.put(NotificationController(), permanent: true);
+  Get.put(SettingController(), permanent: true);
+  Get.put(ThemeController(), permanent: true);
+  Get.put(CountController(), permanent: true);
 
   // Get.put(NoteTaskController<Task>(repository: TaskRepository(uid: uid)));
   runApp(
     ToastificationWrapper(
       child: GetMaterialApp(
+        initialBinding: BindingsBuilder(() {
+          Get.put(UIScaffoldState());
+        }),
         title: 'Note Taking App',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,

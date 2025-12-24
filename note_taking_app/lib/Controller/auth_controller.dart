@@ -17,7 +17,7 @@ import 'package:note_taking_app/UI/SharedComponents/app_theme.dart';
 class AuthenticationController extends GetxController {
   final AuthenticationRepository _authRepository =
       Get.find<AuthenticationRepository>();
-  final Rx<User?> firebaseUser = Rx<User?>(null);
+  late Rx<User?> firebaseUser;
   final Rx<AppUser?> user = Rx<AppUser?>(null);
   String? errorMessage;
   var isLoading = false.obs;
@@ -25,9 +25,10 @@ class AuthenticationController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    firebaseUser = Rx<User?>(FirebaseAuth.instance.currentUser);
+    firebaseUser.bindStream(FirebaseAuth.instance.authStateChanges());
     FirebaseAuth.instance.authStateChanges().listen((user) {
       firebaseUser.value = user;
-
       if (user != null) {
         _onLogin();
       }

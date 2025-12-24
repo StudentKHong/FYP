@@ -4,6 +4,7 @@ import 'package:note_taking_app/Controller/notification_controller.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
 import 'package:note_taking_app/UI/SharedComponents/extended_card.dart';
 import 'package:note_taking_app/UI/SharedComponents/info_button.dart';
+import 'package:note_taking_app/UI/SharedComponents/loading_state.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -11,10 +12,6 @@ class NotificationsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final notificationController = Get.find<NotificationController>();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      notificationController.getAll();
-    });
 
     return Scaffold(
       appBar: CustomAppBar(
@@ -51,8 +48,18 @@ class NotificationsScreen extends StatelessWidget {
               ).textTheme.bodyLarge!.copyWith(color: Colors.black),
             ),
             Expanded(
-              child: Obx(
-                () => ListView.builder(
+              child: Obx(() {
+                if (notificationController.isLoading.value) {
+                  return Center(child: LoadingShimmer());
+                }
+
+                if (notificationController.list.isEmpty) {
+                  return EmptyState(
+                    icon: Icons.notifications,
+                    message: "No notifications yet.",
+                  );
+                }
+                return ListView.builder(
                   itemCount: notificationController.list.length,
                   itemBuilder: (context, index) {
                     final notifications = notificationController.list;
@@ -67,7 +74,7 @@ class NotificationsScreen extends StatelessWidget {
                             if (notification.id != null) {
                               await notificationController.markReadStatus(
                                 notification.id!,
-                                notification.isRead,
+                                !notification.isRead,
                               );
                             }
                           },
@@ -75,14 +82,14 @@ class NotificationsScreen extends StatelessWidget {
                             notification.isRead
                                 ? Icons.mark_email_unread_outlined
                                 : Icons.mark_email_read,
-                            color: Colors.black,
+                            color: notification.isRead ? Colors.grey : Colors.blue,
                           ),
                         ),
                       ],
                     );
                   },
-                ),
-              ),
+                );
+              }),
             ),
           ],
         ),

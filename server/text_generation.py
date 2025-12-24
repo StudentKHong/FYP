@@ -22,6 +22,10 @@ client = genai.Client(
     location="global",
 )
 
+@app.get("/ping")
+async def ping():
+    return {"status": "ok", "message": "Server is awake"}
+
 class GenerateLabelRequest(BaseModel):
     text: str = ""
     list_of_labels: List[str] = []

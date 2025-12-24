@@ -36,7 +36,7 @@ class CustomExtendedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onLongPress: onLongPress,
       onTap: onTap,
       child: Card(

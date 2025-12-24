@@ -27,6 +27,9 @@ class LabelController extends Controller<Label> {
   void onInit() {
     super.onInit();
 
+    final labelRepository = Get.find<LabelRepository>();
+    labelRepository.pingServer();
+
     final AuthenticationController authController =
         Get.find<AuthenticationController>();
     ever(authController.user, (user) {
@@ -219,7 +222,7 @@ class LabelController extends Controller<Label> {
     return [];
   }
 
-  void getNoteLabels() {
+  Future<void> getNoteLabels() async {
     isLoading.value = true;
     errorMessage.value = "";
     final labelRepository = LabelRepository();
@@ -236,7 +239,7 @@ class LabelController extends Controller<Label> {
     );
   }
 
-  void getTaskLabels() {
+  Future<void> getTaskLabels() async {
     isLoading.value = true;
     errorMessage.value = "";
     final labelRepository = LabelRepository();

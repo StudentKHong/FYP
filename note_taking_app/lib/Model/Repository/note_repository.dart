@@ -45,39 +45,7 @@ class NoteRepository extends UserRepository<Note> {
           return snapshot.docs.map((document) {
             final note = fromFirestore(document);
             return note;
-            // final labelId = note.label?.id;
-
-            // return labelId != null && labelsMap.containsKey(labelId)
-            //     ? note.copyWith(label: labelsMap[labelId])
-            //     : note;
           }).toList();
-          // // Check and obtain current user uid.
-          // if (authController.user == null) {
-          //   return <Note>[];
-          // }
-          // final uid = authController.user.value!.uid;
-
-          // List<Note> list = [];
-
-          // for (final document in snapshot.docs) {
-          //   // Fetch note details, including labelId.
-          //   Note data = fromFirestore(document);
-
-          //   // Fetch label details using labelId.
-          //   final labelId = data.label?.id;
-          //   if (labelId != null) {
-          //     final labelDocumentSnapshot = await Repository.baseDocument(
-          //       uid,
-          //     ).collection('labels').doc(labelId).get();
-          //     if (labelDocumentSnapshot.exists) {
-          //       final label = Label.fromFirestore(labelDocumentSnapshot);
-          //       data = data.copyWith(label: label);
-          //     }
-          //   }
-          //   list.add(data);
-          // }
-
-          // return list;
         });
   }
 
@@ -236,7 +204,10 @@ class NoteRepository extends UserRepository<Note> {
         Note newNote = entity.copyWith();
         // Update count of old label and new label.
         // If new label does not exist, create new.
-        final labelCollection = FirebaseFirestore.instance.collection('labels');
+        final labelCollection = FirebaseFirestore.instance
+            .collection('users')
+            .doc(authController.user.value?.uid)
+            .collection('labels');
 
         final oldLabelId = oldNote.label?.id;
         final newLabelId = entity.label?.id;
@@ -248,13 +219,19 @@ class NoteRepository extends UserRepository<Note> {
             }, SetOptions(merge: true));
           }
           if (newNote.label != null) {
-            if (newLabelId != null && newLabelId.isNotEmpty) {
+            final LabelController labelController = Get.find<LabelController>();
+            final isExisting = labelController.noteLabels.any(
+              (label) => label.id == newNote.label?.id,
+            );
+            if (isExisting) {
               batch.set(labelCollection.doc(newLabelId), {
                 'count': FieldValue.increment(1),
               }, SetOptions(merge: true));
             } else {
               final documentReference = labelCollection.doc();
-              batch.set(documentReference, newNote.label!.toMap());
+              final labelMap = newNote.label!.toMap();
+              labelMap.remove('id');
+              batch.set(documentReference, labelMap);
               final newLabel = newNote.label!.copyWith(
                 id: documentReference.id,
               );
@@ -278,7 +255,7 @@ class NoteRepository extends UserRepository<Note> {
         updatedEntities.add(newNote);
       }
 
-      await batch.commit();
+      batch.commit();
       for (final note in updatedEntities) {
         print(
           'Note id=${note.id}, '

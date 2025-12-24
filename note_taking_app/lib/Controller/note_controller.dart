@@ -15,6 +15,7 @@ class NoteController extends Controller<Note> {
 
   StreamSubscription<List<Note>>? _watchByLabelSubscription;
   StreamSubscription<List<Note>>? _watchByGroupSubscription;
+  StreamSubscription<List<Note>>? _watchArchivedSubscription;
 
   RxString activeLabelId = ''.obs;
 
@@ -35,6 +36,7 @@ class NoteController extends Controller<Note> {
       watchByIdSubscription?.cancel();
       _watchByLabelSubscription?.cancel();
       _watchByGroupSubscription?.cancel();
+      _watchArchivedSubscription?.cancel();
 
       if (user != null) {
         getAll();
@@ -42,6 +44,7 @@ class NoteController extends Controller<Note> {
       } else {
         list.clear();
         filteredList.clear();
+        totalCount.value = 0;
       }
     });
   }
@@ -50,6 +53,7 @@ class NoteController extends Controller<Note> {
   void onClose() {
     _watchByLabelSubscription?.cancel();
     _watchByGroupSubscription?.cancel();
+    _watchArchivedSubscription?.cancel();
     super.onClose();
   }
 
@@ -173,9 +177,10 @@ class NoteController extends Controller<Note> {
     activeLabelId.value = '';
     watchAllSubscription?.cancel();
 
-    final labels = _labelController.noteLabels;
     watchAllSubscription = _noteRepository.watchAll().listen(
       (notes) {
+        final labels = _labelController.noteLabels;
+
         final notesWithLabels = notes.map((note) {
           final labelId = note.label?.id;
           return labelId != null && labels.any((label) => label.id == labelId)
@@ -434,11 +439,11 @@ class NoteController extends Controller<Note> {
     await edit([updatedItem], pushToTop: false);
   }
 
-  void getArchived() {
+  Future<void> getArchived() async {
     isLoading.value = true;
     errorMessage.value = "";
-    watchAllSubscription?.cancel();
-    watchAllSubscription = (repository as NoteRepository)
+    _watchArchivedSubscription?.cancel();
+    _watchArchivedSubscription = (repository as NoteRepository)
         .watchArchived()
         .listen(
           (notes) {

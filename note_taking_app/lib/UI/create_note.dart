@@ -18,12 +18,13 @@ import 'package:note_taking_app/Model/Models/label_model.dart';
 import 'package:note_taking_app/Model/Models/note_model.dart';
 import 'package:note_taking_app/Service/conectivity_service.dart';
 import 'package:note_taking_app/Service/upload_image_service.dart';
+import 'package:note_taking_app/UI/Navigation/ui_scaffold_state.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
+import 'package:note_taking_app/UI/SharedComponents/confirmation_message.dart';
 import 'package:note_taking_app/UI/SharedComponents/label_editor.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/SharedComponents/text_box.dart';
 import 'package:note_taking_app/UI/attachment.dart';
-import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:signature/signature.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
@@ -61,6 +62,8 @@ class NoteDetailScreen extends StatefulWidget {
 }
 
 class _NoteDetailScreenState extends State<NoteDetailScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   late final String title;
   final int maxLength = 2000;
   late ValueNotifier<int> numberOfCharacters;
@@ -329,123 +332,153 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
     }
   }
 
+  Future<void> _createNote({
+    required String deltaJson,
+    required String searchableContent,
+    required Function(Note? note) successAction,
+  }) async {
+    final isShared = widget.mode == Mode.createShared;
+    note = Note(
+      id: UniqueKey().toString(),
+      title: titleController.text.trim(),
+      content: deltaJson,
+      searchableContent: searchableContent,
+      createdAt: DateTime.now(),
+      viewedAt: isShared ? null : DateTime.now(),
+      updatedAt: DateTime.now(),
+      isPinned: false,
+      isArchived: isShared ? null : false,
+      label: isShared ? null : selectedLabel,
+      labelName: isShared ? selectedLabel?.name : null,
+    );
+
+    if (note != null) {
+      if (widget.mode == Mode.create) {
+        final createdNote = await noteController.create(note!);
+        if (createdNote != null && createdNote.id != null) {
+          _commitAttachments(createdNote.id!);
+          note = createdNote;
+        }
+      } else if (widget.mode == Mode.createShared &&
+          widget.groupId != null &&
+          widget.groupType != null) {
+        noteController.shareMultiple(
+          [note!],
+          widget.groupId!,
+          widget.groupType!,
+        );
+      }
+    }
+    if (noteController.errorMessage.value.isNotEmpty) {
+      CustomDialog.showError("Error", noteController.errorMessage.value);
+      return;
+    }
+
+    CustomDialog.showSuccess("Success", "Successfully create note.");
+    successAction(note);
+  }
+
+  Future<void> _editNote({
+    required String deltaJson,
+    required String searchableContent,
+    required Function(Note? note) successAction,
+  }) async {
+    final isShared = widget.mode == Mode.createShared;
+    if (note != null) {
+      await uploadImageService.deleteImages(
+        note: note!,
+        currentContentJson: jsonEncode(
+          contentController.document.toDelta().toJson(),
+        ),
+      );
+    }
+    note = note!.copyWith(
+      title: titleController.text.trim(),
+      content: deltaJson,
+      searchableContent: contentController.document.toPlainText().trim(),
+      label: isShared ? null : selectedLabel,
+      labelName: isShared ? selectedLabel?.name : null,
+      isViewed: isShared ? false : true,
+      isUpdated: true,
+    );
+
+    if (widget.mode == Mode.edit) {
+      noteController.edit([note!]);
+    } else if (widget.mode == Mode.editShared &&
+        widget.groupId != null &&
+        widget.groupType != null) {
+      noteController.editShared(note!, widget.groupId!, widget.groupType!);
+    }
+
+    if (noteController.errorMessage.value.isNotEmpty) {
+      CustomDialog.showError("Error", noteController.errorMessage.value);
+      return;
+    }
+    uploadImageService.attemptUpload();
+    CustomDialog.showSuccess("Success", "Successfully edit note.");
+    successAction(note);
+  }
+
+  Future<void> _saveChanges({
+    required Function(Note? note) successAction,
+  }) async {
+    final delta = contentController.document.toDelta();
+    final deltaJson = jsonEncode(delta.toJson());
+    final searchableContent = contentController.document.toPlainText().trim();
+    if (hasChanged && (widget.mode != Mode.view)) {
+      if (widget.mode == Mode.create || widget.mode == Mode.createShared) {
+        await _createNote(
+          deltaJson: deltaJson,
+          searchableContent: searchableContent,
+          successAction: successAction,
+        );
+      } else {
+        await _editNote(
+          deltaJson: deltaJson,
+          searchableContent: searchableContent,
+          successAction: successAction,
+        );
+      }
+    }
+    if (widget.mode == Mode.edit && !hasChanged) {
+      final viewedNote = note!.copyWith(isViewed: true);
+      noteController.edit([viewedNote]);
+      if (noteController.errorMessage.value.isNotEmpty) {
+        CustomDialog.showError("Error", noteController.errorMessage.value);
+      }
+    }
+  }
+
+  void _showUnsavedChangesDialog() {
+    buildConfirmationMessage(
+      context: context,
+      title: 'Unsaved Changes. Would you like to save changes?',
+      onTapOption1: () async => await _saveChanges(
+        successAction: (_) async {
+          Get.back();
+          Get.find<UIScaffoldState>().openDrawer();
+        },
+      ),
+      buttonText1: "Save",
+      colorForButton1: Theme.of(
+        context,
+      ).elevatedButtonTheme.style?.backgroundColor?.resolve({}),
+      buttonText2: "Cancel",
+      colorForButton2: Colors.grey,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-
-        final delta = contentController.document.toDelta();
-        // final syncedDelta = await _syncLocalImage(delta);
-        final deltaJson = jsonEncode(delta.toJson());
-        final searchableContent = contentController.document
-            .toPlainText()
-            .trim();
-        if (hasChanged && (widget.mode != Mode.view)) {
-          final isShared = widget.mode == Mode.createShared;
-          if (widget.mode == Mode.create || widget.mode == Mode.createShared) {
-            note = Note(
-              id: UniqueKey().toString(),
-              title: titleController.text.trim(),
-              content: deltaJson,
-              searchableContent: searchableContent,
-              createdAt: DateTime.now(),
-              viewedAt: isShared ? null : DateTime.now(),
-              updatedAt: DateTime.now(),
-              isPinned: false,
-              isArchived: isShared ? null : false,
-              label: isShared ? null : selectedLabel,
-              labelName: isShared ? selectedLabel?.name : null,
-            );
-
-            if (note != null) {
-              if (widget.mode == Mode.create) {
-                final createdNote = await noteController.create(note!);
-                if (createdNote != null && createdNote.id != null) {
-                  _commitAttachments(createdNote.id!);
-                  note = createdNote;
-                }
-              } else if (widget.mode == Mode.createShared &&
-                  widget.groupId != null &&
-                  widget.groupType != null) {
-                noteController.shareMultiple(
-                  [note!],
-                  widget.groupId!,
-                  widget.groupType!,
-                );
-              }
-            }
-            if (noteController.errorMessage.value.isNotEmpty) {
-              CustomDialog.showError(
-                "Error",
-                noteController.errorMessage.value,
-              );
-              return;
-            }
-
-            CustomDialog.showSuccess("Success", "Successfully create note.");
-            Get.back(result: note);
-            return;
-          } else {
-            if (note != null) {
-              await uploadImageService.deleteImages(
-                note: note!,
-                currentContentJson: jsonEncode(
-                  contentController.document.toDelta().toJson(),
-                ),
-              );
-            }
-            note = note!.copyWith(
-              title: titleController.text.trim(),
-              content: deltaJson,
-              searchableContent: contentController.document
-                  .toPlainText()
-                  .trim(),
-              label: isShared ? null : selectedLabel,
-              labelName: isShared ? selectedLabel?.name : null,
-              isViewed: isShared ? false : true,
-              isUpdated: true,
-            );
-
-            if (widget.mode == Mode.edit) {
-              noteController.edit([note!]);
-            } else if (widget.mode == Mode.editShared &&
-                widget.groupId != null &&
-                widget.groupType != null) {
-              noteController.editShared(
-                note!,
-                widget.groupId!,
-                widget.groupType!,
-              );
-            }
-
-            if (noteController.errorMessage.value.isNotEmpty) {
-              CustomDialog.showError(
-                "Error",
-                noteController.errorMessage.value,
-              );
-              return;
-            }
-            await uploadImageService.attemptUpload();
-
-            if (!uploadImageService.hasError.value) {
-              CustomDialog.showSuccess("Success", "Successfully edit note.");
-              Get.back(result: note);
-            }
-            return;
-          }
-        }
-        if (widget.mode == Mode.edit && !hasChanged) {
-          final viewedNote = note!.copyWith(isViewed: true);
-          noteController.edit([viewedNote]);
-          if (noteController.errorMessage.value.isNotEmpty) {
-            CustomDialog.showError("Error", noteController.errorMessage.value);
-          }
-        }
+        await _saveChanges(successAction: (note) => Get.back(result: note));
         Get.back();
       },
       child: Scaffold(
+        key: _scaffoldKey,
         appBar: CustomAppBar(
           titleText: title,
           subtitle: widget.description,
@@ -473,6 +506,13 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                 )
               : [],
           replaceDefaultActions: false,
+          onMenuTap: () {
+            if (hasChanged) {
+              _showUnsavedChangesDialog();
+            } else {
+              _scaffoldKey.currentState?.openEndDrawer();
+            }
+          },
         ),
         endDrawer: const HamburgerMenu(),
         body: CustomScrollView(
@@ -626,12 +666,12 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                 return pickedImage.path;
                               },
                               onImageInsertCallback:
-                                  (imageUrl, controller) async {
+                                  (imagePath, controller) async {
                                     final index =
                                         controller.selection.baseOffset;
                                     controller.document.insert(
                                       index,
-                                      BlockEmbed.image(imageUrl),
+                                      BlockEmbed.image(imagePath),
                                     );
                                     controller.updateSelection(
                                       TextSelection.collapsed(
@@ -645,7 +685,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                       controller.document.toDelta().toJson(),
                                     );
                                     await uploadImageService.queueUpload(
-                                      localPath: imageUrl,
+                                      localPath: imagePath,
                                       noteId: noteId,
                                       currentContentJson: contentJson,
                                     );
@@ -707,6 +747,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                                   );
                                                   final file = File(filePath);
                                                   await file.writeAsBytes(data);
+
                                                   // Add after file.writeAsBytes
                                                   print(
                                                     "File exists: ${await file.exists()}",

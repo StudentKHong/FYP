@@ -168,36 +168,29 @@ class _FilterPopUpState<T extends FilterableEntity>
           children: [
             Text(
               'Filters',
-              style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge!.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
 
             if (_getLabelFilterChips() != null) ...[
               // Labels filter with FilterChips to select multiple labels.
-              Text(
-                'Labels',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium,
-              ),
+              Text('Labels', style: Theme.of(context).textTheme.bodyMedium),
               const SizedBox(height: 5),
               Wrap(spacing: 10, children: _getLabelFilterChips()!),
               const SizedBox(height: 10),
             ],
 
             // Date created filters with DateRangePicker
-            Text(
-              'Date Created',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium,
-            ),
+            Text('Date Created', style: Theme.of(context).textTheme.bodyMedium),
             const SizedBox(height: 5),
             ListTile(
               shape: RoundedRectangleBorder(
-                side: BorderSide(width: 1, color: Theme.of(context).colorScheme.onPrimary),
+                side: BorderSide(
+                  width: 1,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
                 borderRadius: BorderRadius.circular(8),
               ),
               trailing: Icon(Icons.calendar_month),
@@ -209,14 +202,15 @@ class _FilterPopUpState<T extends FilterableEntity>
             // Date modified filters with DateRangePicker
             Text(
               'Date Modified',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 5),
             ListTile(
               shape: RoundedRectangleBorder(
-                side: BorderSide(width: 1, color: Theme.of(context).colorScheme.onPrimary),
+                side: BorderSide(
+                  width: 1,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
                 borderRadius: BorderRadius.circular(8),
               ),
               trailing: Icon(Icons.calendar_month),
@@ -246,9 +240,7 @@ class _FilterPopUpState<T extends FilterableEntity>
                   }
                   Navigator.pop(context);
                 },
-                child: Text(
-                  'Apply',
-                ),
+                child: Text('Apply'),
               ),
             ),
 
@@ -256,21 +248,13 @@ class _FilterPopUpState<T extends FilterableEntity>
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
+                style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.grey.shade400)),
                 onPressed: () {
-                  // if (T == Note) {
-                  //   _controller.currentFilter.value =
-                  //       NoteFilter() as ComponentFilter<T>;
-                  // } else if (T == Task) {
-                  //   _controller.currentFilter.value =
-                  //       TaskFilter() as ComponentFilter<T>;
-                  // }
                   _controller.resetFilter();
 
                   Navigator.pop(context);
                 },
-                child: Text(
-                  'Clear',
-                ),
+                child: Text('Clear'),
               ),
             ),
           ],

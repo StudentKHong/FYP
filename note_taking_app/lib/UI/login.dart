@@ -81,21 +81,11 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.book,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Note Taking App',
-                      style: TextStyle(
-                        color: Theme.of(context).textTheme.bodyLarge!.color,
-                      ),
-                    ),
-                  ],
+                Center(
+                  child: Hero(
+                    tag: 'app_logo',
+                    child: Image.asset('assets/logo.png'),
+                  ),
                 ),
                 ...loginDetails.map((detail) {
                   return CustomTextField(

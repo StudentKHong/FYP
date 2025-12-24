@@ -15,6 +15,7 @@ class TaskController extends Controller<Task> {
 
   StreamSubscription<List<Task>>? _watchByLabelSubscription;
   StreamSubscription<List<Task>>? _watchByGroupSubscription;
+  StreamSubscription<List<Task>>? _watchArchivedSubscription;
 
   TaskController() : super(repository: Get.find<TaskRepository>());
 
@@ -28,6 +29,7 @@ class TaskController extends Controller<Task> {
       watchByIdSubscription?.cancel();
       _watchByGroupSubscription?.cancel();
       _watchByLabelSubscription?.cancel();
+      _watchArchivedSubscription?.cancel();
 
       if (user != null) {
         _labelController.getTaskLabels();
@@ -36,6 +38,7 @@ class TaskController extends Controller<Task> {
       } else {
         list.clear();
         filteredList.clear();
+        totalCount.value = 0;
       }
     });
   }
@@ -44,6 +47,7 @@ class TaskController extends Controller<Task> {
   void onClose() {
     _watchByLabelSubscription?.cancel();
     _watchByGroupSubscription?.cancel();
+    _watchArchivedSubscription?.cancel();
     super.onClose();
   }
 
@@ -441,11 +445,11 @@ class TaskController extends Controller<Task> {
     }
   }
 
-  void getArchived() {
+  Future<void> getArchived() async {
     isLoading.value = true;
     errorMessage.value = "";
-    watchAllSubscription?.cancel();
-    watchAllSubscription = (repository as TaskRepository)
+    _watchArchivedSubscription?.cancel();
+    _watchArchivedSubscription = (repository as TaskRepository)
         .watchArchived()
         .listen(
           (tasks) {

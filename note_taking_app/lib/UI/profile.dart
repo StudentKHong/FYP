@@ -242,7 +242,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _buildReauthenticatePopUp() {
-    final TextEditingController emailConfirmationController = TextEditingController();
+    final TextEditingController emailConfirmationController =
+        TextEditingController();
 
     buildConfirmationMessage(
       context: context,
@@ -268,7 +269,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final currentEmail = emailController.text.trim();
         final confirmationEmail = emailConfirmationController.text.trim();
         if (currentEmail != confirmationEmail) {
-          CustomDialog.showError("Error", "Email does not match the current email.");
+          CustomDialog.showError(
+            "Error",
+            "Email does not match the current email.",
+          );
           return;
         }
 
@@ -366,6 +370,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
+                  style: ButtonStyle(
+                    backgroundColor: WidgetStatePropertyAll(Colors.red),
+                  ),
                   onPressed: () {
                     _buildReauthenticatePopUp();
                   },

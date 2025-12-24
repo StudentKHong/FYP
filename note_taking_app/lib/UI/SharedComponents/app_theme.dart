@@ -12,9 +12,14 @@ class AppTheme {
       seedColor: Colors.lightBlue,
     ).copyWith(onPrimary: Colors.black),
     scaffoldBackgroundColor: Color(0xFFF4F5F7),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: Colors.blue,
-      foregroundColor: Colors.white,
+      foregroundColor: Colors.grey,
+      titleTextStyle: GoogleFonts.inter(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      ),
     ),
     cardTheme: CardThemeData(
       surfaceTintColor: Colors.transparent,
@@ -51,6 +56,8 @@ class AppTheme {
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
+        elevation: 2,
+        textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
       ),
     ),
     iconTheme: IconThemeData(color: Colors.black),
@@ -60,11 +67,13 @@ class AppTheme {
         return Colors.grey;
       }),
       trackColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) return Colors.blue.withAlpha(50);
+        if (states.contains(WidgetState.selected)) {
+          return Colors.blue.withAlpha(50);
+        }
         return Colors.grey.withAlpha(50);
       }),
-      trackOutlineColor: WidgetStatePropertyAll(Colors.grey.shade700)
-    )
+      trackOutlineColor: WidgetStatePropertyAll(Colors.grey.shade700),
+    ),
   );
 
   static final ThemeData darkTheme = ThemeData(
@@ -74,9 +83,14 @@ class AppTheme {
       seedColor: Colors.lightBlue.shade700,
     ).copyWith(onPrimary: Colors.white),
     scaffoldBackgroundColor: Colors.black,
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: Colors.blue,
       foregroundColor: Colors.white,
+      titleTextStyle: GoogleFonts.inter(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      ),
     ),
     cardTheme: CardThemeData(
       surfaceTintColor: Colors.transparent,
@@ -113,6 +127,8 @@ class AppTheme {
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
+        elevation: 2,
+        textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
       ),
     ),
     iconTheme: IconThemeData(color: Colors.black),
@@ -122,11 +138,13 @@ class AppTheme {
         return Colors.grey.shade300;
       }),
       trackColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) return Colors.lightBlue.withAlpha(50);
+        if (states.contains(WidgetState.selected)) {
+          return Colors.lightBlue.withAlpha(50);
+        }
         return Colors.grey.shade700;
       }),
-      trackOutlineColor: WidgetStatePropertyAll(Colors.grey.shade700)
-    )
+      trackOutlineColor: WidgetStatePropertyAll(Colors.grey.shade700),
+    ),
   );
 
   static Color getOptimalTextColor(Color backgroundColor) {

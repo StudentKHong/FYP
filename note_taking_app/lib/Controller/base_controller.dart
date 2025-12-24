@@ -232,24 +232,28 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
       isLoading.value = true;
       // Update component in Firebase Firestore.
       errorMessage.value = "";
+
       final newEntities = await repository.edit(entities);
 
       // Update reactive list and filteredList.
       for (final updatedEntity in newEntities) {
         final index = list.indexWhere((item) => item.id == updatedEntity.id);
+
         if (index != -1) {
           if (pushToTop) {
             pushItemToTop(entity: updatedEntity, forFilteredList: false);
           } else {
             list[index] = updatedEntity;
           }
-        }
+        } else {}
+        list.refresh();
 
         final filteredIndex = filteredList.indexWhere(
           (item) => item.id == updatedEntity.id,
         );
+
         if (filteredIndex != -1) {
-          if (currentFilter.value == null && currentFilter.value!.isEmpty) {
+          if (currentFilter.value == null || currentFilter.value!.isEmpty) {
             if (pushToTop) {
               pushItemToTop(entity: updatedEntity, forList: false);
             } else {
@@ -264,9 +268,10 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
               } else {
                 filteredList[filteredIndex] = updatedEntity;
               }
-            }
+            } else {}
           }
         }
+        filteredList.refresh();
       }
     } catch (ex) {
       errorMessage.value = ex.toString();

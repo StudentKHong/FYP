@@ -64,10 +64,9 @@ class _HomeScreenState extends State<HomeScreen> {
       endDrawer: const HamburgerMenu(),
       body: RefreshIndicator(
         onRefresh: _loadData,
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Column(
+        child: ListView(
+          children: [
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Wrap(
@@ -172,50 +171,51 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
 
                       Obx(() {
-                      if (taskController.isLoading.value) {
-                        return LoadingShimmer(itemCount: 3);
-                      } else if (taskController.list.isEmpty) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: Text(
-                            'No recent tasks found.',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodyLarge!.copyWith(color: Colors.red),
-                          ),
-                        );
-                      }
-                      else {
-                        return ListView.builder(
-                          shrinkWrap: true,
-                          physics: NeverScrollableScrollPhysics(),
-                          itemCount: taskController.mostRecent.length,
-                          itemBuilder: (context, index) {
-                            final task = taskController.mostRecent[index];
+                        if (taskController.isLoading.value) {
+                          return LoadingShimmer(itemCount: 3);
+                        } else if (taskController.list.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Text(
+                              'No recent tasks found.',
+                              style: Theme.of(context).textTheme.bodyLarge!
+                                  .copyWith(color: Colors.red),
+                            ),
+                          );
+                        } else {
+                          return ListView.builder(
+                            shrinkWrap: true,
+                            physics: NeverScrollableScrollPhysics(),
+                            itemCount: taskController.mostRecent.length,
+                            itemBuilder: (context, index) {
+                              final task = taskController.mostRecent[index];
 
-                            return CustomExtendedCard(
-                              title: task.title,
-                              content: [
-                                task.description ?? '',
-                                DateFormat.yMd().format(task.createdAt),
-                              ],
-                              otherDetails: [task.label?.name ?? ''],
-                              onTap: () {
-                                Get.to(
-                                  TaskDetailScreen(mode: Mode.edit, task: task),
-                                );
-                              },
-                            );
-                          },
-                        );
-                      }
-                      })
+                              return CustomExtendedCard(
+                                title: task.title,
+                                content: [
+                                  task.description ?? '',
+                                  DateFormat.yMd().format(task.createdAt),
+                                ],
+                                otherDetails: [task.label?.name ?? ''],
+                                onTap: () {
+                                  Get.to(
+                                    TaskDetailScreen(
+                                      mode: Mode.edit,
+                                      task: task,
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        }
+                      }),
                     ],
                   ),
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );

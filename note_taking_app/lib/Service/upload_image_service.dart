@@ -69,9 +69,10 @@ class UploadImageService extends GetxService {
       if (await file.exists()) {
         final jsonString = await file.readAsString();
         final List list = jsonDecode(jsonString);
-        _queue.assignAll(list.map((item) => Map<String, dynamic>.from(item)));
+        _deletionQueue.assignAll(list.map((item) => Map<String, dynamic>.from(item)));
       }
     } catch (ex) {
+      CustomDialog.showError("Error", ex.toString());
       CustomDialog.showError("Error", "Failed to load deletion queue.");
     }
   }

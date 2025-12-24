@@ -8,12 +8,23 @@ import 'package:note_taking_app/Model/Repository/crud_repository.dart';
 import 'package:note_taking_app/Service/offline_first_service.dart';
 
 class LabelRepository extends UserRepository<Label> {
+  final String baseUrl = "https://note-taking-app-zrdv.onrender.com";
+
   LabelRepository()
     : super(
         collectionBuilder: (uid) =>
             Repository.baseDocument(uid).collection('labels'),
         fromFirestore: (document) => Label.fromFirestore(document),
       );
+
+  Future<void> pingServer() async {
+    final response = await http
+        .get(Uri.parse('$baseUrl/ping'))
+        .timeout(Duration(minutes: 1));
+    if (response.statusCode != 200) {
+      throw Exception("Timeout occured. Unable to connect to backend.");
+    }
+  }
 
   @override
   Future<Label> create(Label entity) async {
@@ -97,7 +108,7 @@ class LabelRepository extends UserRepository<Label> {
   }
 
   Future<List<String>> generateLabel(String text, List<String> labels) async {
-    final url = Uri.parse("https://note-taking-app-zrdv.onrender.com/generate-labels");
+    final url = Uri.parse("$baseUrl/generate-labels");
     final response = await http.post(
       url,
       headers: {"Content-Type": "application/json"},
