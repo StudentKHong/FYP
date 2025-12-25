@@ -5,12 +5,15 @@ import 'package:note_taking_app/Controller/label_controller.dart';
 import 'package:note_taking_app/Model/Models/entity_model.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
-import 'package:note_taking_app/Model/Models/note_model.dart';
-import 'package:note_taking_app/Model/Models/task_model.dart';
 
 class FilterPopUp<T extends FilterableEntity> extends StatefulWidget {
   final Controller<T> controller;
-  const FilterPopUp({super.key, required this.controller});
+  final ComponentType forComponentType;
+  const FilterPopUp({
+    super.key,
+    required this.controller,
+    required this.forComponentType,
+  });
 
   @override
   State<FilterPopUp<T>> createState() => _FilterPopUpState<T>();
@@ -20,9 +23,6 @@ class _FilterPopUpState<T extends FilterableEntity>
     extends State<FilterPopUp<T>> {
   final LabelController _labelController = Get.find<LabelController>();
   late final Controller<T> _controller;
-
-  // // Record all labels related to a component (e.g. note/task)
-  // List<String>? _labels;
 
   @override
   void initState() {
@@ -64,56 +64,77 @@ class _FilterPopUpState<T extends FilterableEntity>
   List<FilterChip>? _getLabelFilterChips() {
     final currentFilter = _controller.currentFilter.value;
 
-    final List<Label> labels = T == Note
+    final List<Label> labels = widget.forComponentType == ComponentType.note
         ? _labelController.noteLabels
-        : T == Task
-        ? _labelController.taskLabels
-        : [];
+        : _labelController.taskLabels;
 
     if (labels.isEmpty || currentFilter == null) {
       return null;
     }
-    final labelIds = currentFilter.labelNames ?? [];
+    print("Building chips. LabelIds: ${currentFilter.labelNames}");
+
     return labels.map((option) {
       final labelId = option.id;
       final labelName = option.name;
-      final isSelected = labelIds.contains(labelId);
+      final isSelected = currentFilter.labelNames?.contains(labelId) ?? false;
+      print("Label: $labelName, isSelected: $isSelected");
 
       return FilterChip(
         label: Text(labelName),
         selected: isSelected,
+        selectedColor: Theme.of(context).colorScheme.primary.withAlpha(20),
+        checkmarkColor: Theme.of(context).colorScheme.primary,
         onSelected: (value) {
+          print("Clicked $labelName, value: $value");
           if (labelId == null) return;
-          if (value) {
-            labelIds.add(labelId);
-          } else {
-            labelIds.remove(labelId);
-          }
-          _controller.currentFilter.refresh();
+
+          final filter = _controller.currentFilter.value;
+          if (filter == null) return;
+          filter.labelNames ??= [];
+
+          setState(() {
+            if (value) {
+              if (!filter.labelNames!.contains(labelId)) {
+                _controller.currentFilter.value!.labelNames!.add(labelId);
+              }
+            } else {
+              _controller.currentFilter.value!.labelNames!.remove(labelId);
+            }
+            print("After update. LabelIds: ${filter.labelNames}");
+          });
+
+          // setState(() {});
+          // _controller.currentFilter.refresh();
         },
       );
     }).toList();
   }
 
   List<FilterChip>? _getStatusFilterChips() {
-    ComponentFilter<T>? filter = _controller.currentFilter.value;
+    final ComponentFilter<T>? filter = _controller.currentFilter.value;
     if (filter != null && filter is TaskFilter) {
       return Status.values.map((option) {
-        final selectedStatus = option.toString();
+        final selectedStatus = option.name.toString();
         final isSelected =
             (filter as TaskFilter).status?.contains(selectedStatus) ?? false;
 
         return FilterChip(
           label: Text(selectedStatus),
+          selectedColor: Theme.of(context).colorScheme.primary.withAlpha(20),
+          checkmarkColor: Theme.of(context).colorScheme.primary,
           selected: isSelected,
           onSelected: (value) {
-            if (value) {
-              (filter as TaskFilter).status?.add(selectedStatus);
-            } else {
-              (filter as TaskFilter).status?.remove(selectedStatus);
-            }
-            setState(() {});
-            _controller.currentFilter.refresh();
+            (filter as TaskFilter).status ??= [];
+            setState(() {
+              if (value) {
+                (filter as TaskFilter).status?.add(selectedStatus);
+              } else {
+                (filter as TaskFilter).status?.remove(selectedStatus);
+              }
+            });
+
+            // setState(() {});
+            // _controller.currentFilter.refresh();
           },
         );
       }).toList();
@@ -129,15 +150,18 @@ class _FilterPopUpState<T extends FilterableEntity>
       firstDate: DateTime(today.year - 100, today.month, today.day),
       lastDate: DateTime(today.year + 100, today.month, today.day),
     );
+    if (selectedDateRange == null) return;
+    final adjustedDateRange = DateTimeRange(
+      start: selectedDateRange.start,
+      end: selectedDateRange.end.add(
+        Duration(hours: 23, minutes: 59, seconds: 59, milliseconds: 999),
+      ),
+    );
     setState(() {
       if (isDateCreated) {
-        if (selectedDateRange != null) {
-          _controller.currentFilter.value?.dateCreated = selectedDateRange;
-        }
+        _controller.currentFilter.value?.dateCreated = adjustedDateRange;
       } else {
-        if (selectedDateRange != null) {
-          _controller.currentFilter.value?.dateModified = selectedDateRange;
-        }
+        _controller.currentFilter.value?.dateModified = adjustedDateRange;
       }
     });
   }
@@ -214,14 +238,14 @@ class _FilterPopUpState<T extends FilterableEntity>
                 borderRadius: BorderRadius.circular(8),
               ),
               trailing: Icon(Icons.calendar_month),
-              title: Obx(() => Text(_dateInText(false))),
+              title: Text(_dateInText(false)),
               onTap: () => _dateTimePicker(false),
             ),
             const SizedBox(height: 10),
 
             // Status filter with DropDownButton.
             // Only for task.
-            if (T == Task) ...[
+            if (widget.forComponentType == ComponentType.task) ...[
               Text('Status', style: Theme.of(context).textTheme.bodyMedium),
               const SizedBox(height: 5),
               Wrap(spacing: 10, children: _getStatusFilterChips()!),
@@ -248,7 +272,9 @@ class _FilterPopUpState<T extends FilterableEntity>
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.grey.shade400)),
+                style: ButtonStyle(
+                  backgroundColor: WidgetStatePropertyAll(Colors.grey.shade400),
+                ),
                 onPressed: () {
                   _controller.resetFilter();
 

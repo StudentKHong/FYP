@@ -54,6 +54,10 @@ class NoteController extends Controller<Note> {
     _watchByLabelSubscription?.cancel();
     _watchByGroupSubscription?.cancel();
     _watchArchivedSubscription?.cancel();
+    currentFilter.value = null;
+    currentSort.value = null;
+    filteredList.assignAll(list);
+    
     super.onClose();
   }
 
@@ -173,6 +177,7 @@ class NoteController extends Controller<Note> {
     isLoading.value = true;
     errorMessage.value = "";
     // Fetch notes.
+    _watchArchivedSubscription?.cancel();
     _watchByLabelSubscription?.cancel();
     activeLabelId.value = '';
     watchAllSubscription?.cancel();
@@ -217,30 +222,29 @@ class NoteController extends Controller<Note> {
   }
 
   Future<void> getByGroup(String groupId, String groupType) async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = "";
-      // Fetch notes.
-      _watchByGroupSubscription?.cancel();
-      _watchByGroupSubscription = _noteRepository
-          .watchByGroup(groupId, groupType)
-          .listen((notes) {
+    isLoading.value = true;
+    errorMessage.value = "";
+    // Fetch notes.
+    _watchByGroupSubscription?.cancel();
+    _watchByGroupSubscription = _noteRepository
+        .watchByGroup(groupId, groupType)
+        .listen(
+          (notes) {
             list.assignAll(notes);
-            if (activeLabelId.value.isEmpty) {
-              filteredList.assignAll(notes);
-            }
-          });
+            filteredList.assignAll(notes);
 
-      // Refilter if current filter exists.
-      if (currentFilter.value != null &&
-          currentFilter.value!.labelNames != null) {
-        filter();
-      }
-    } catch (ex) {
-      errorMessage.value = ex.toString();
-    } finally {
-      isLoading.value = false;
-    }
+            // Refilter if current filter exists.
+            if (currentFilter.value != null &&
+                currentFilter.value!.labelNames != null) {
+              filter();
+            }
+            isLoading.value = false;
+          },
+          onError: (ex) {
+            errorMessage.value = ex.toString();
+            isLoading.value = false;
+          },
+        );
   }
 
   Future<void> getByLabel(String labelId) async {
@@ -308,8 +312,14 @@ class NoteController extends Controller<Note> {
     try {
       isLoading.value = true;
       errorMessage.value = "";
+      final noteToCreate = note.copyWith(
+        labelName: note.label?.name,
+        label: null,
+        replaceLabel: true,
+        isPinned: false,
+      );
       final newEntity = await (repository as NoteRepository).editShared(
-        note,
+        noteToCreate,
         groupId,
         groupType,
       );
@@ -436,12 +446,28 @@ class NoteController extends Controller<Note> {
       isArchived: !(note.isArchived ?? false),
       isPinned: !(note.isArchived ?? false) ? false : note.isPinned,
     );
-    await edit([updatedItem], pushToTop: false);
+    await repository.edit([updatedItem]);
+
+    if (note.isArchived != null && note.isArchived!) {
+      filteredList.removeWhere((item) => item.id == note.id);
+      final mainController = Get.find<NoteController>();
+      mainController.filteredList.add(updatedItem);
+    } else {
+      filteredList.removeWhere((item) => item.id == note.id);
+      if (!Get.isRegistered(tag: "notes_archived")) {
+        Get.put(NoteController(), tag: "notes_archived");
+      }
+      final archivedNotesController = Get.find<NoteController>(
+        tag: "notes_archived",
+      );
+      archivedNotesController.filteredList.add(updatedItem);
+    }
   }
 
   Future<void> getArchived() async {
     isLoading.value = true;
     errorMessage.value = "";
+    watchAllSubscription?.cancel();
     _watchArchivedSubscription?.cancel();
     _watchArchivedSubscription = (repository as NoteRepository)
         .watchArchived()

@@ -14,7 +14,7 @@ import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/SharedComponents/text_box.dart';
 import 'package:note_taking_app/UI/create_note.dart';
 import 'package:note_taking_app/UI/create_task.dart';
-import 'package:note_taking_app/UI/note_task.dart';
+import 'package:note_taking_app/UI/list_screen.dart';
 
 // Assuming this page is only for Note and Task.
 class CreateLabelScreen<T extends BaseEntity> extends StatefulWidget {

@@ -107,8 +107,10 @@ class AuthenticationController extends GetxController {
       final previousScreen = Get.arguments;
 
       if (previousScreen != null && previousScreen is String) {
+        await Future.delayed(Duration(milliseconds: 500));
         Get.offAllNamed(previousScreen);
       } else {
+        await Future.delayed(Duration(seconds: 2));
         Get.offAllNamed(Routes.home);
       }
     } catch (ex) {

@@ -17,7 +17,7 @@ import 'package:note_taking_app/UI/SharedComponents/app_theme.dart';
 import 'package:note_taking_app/UI/SharedComponents/confirmation_message.dart';
 import 'package:note_taking_app/UI/SharedComponents/share_feature.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
-import 'package:note_taking_app/UI/note_task.dart';
+import 'package:note_taking_app/UI/list_screen.dart';
 import 'package:note_taking_app/UI/register.dart';
 import 'package:note_taking_app/main.dart';
 
@@ -38,19 +38,14 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.subtitle,
     this.actions,
     this.replaceDefaultActions = false,
-    this.onMenuTap
+    this.onMenuTap,
   });
 
   @override
   Widget build(BuildContext context) {
     Widget appBarTitle = titleWidget != null
         ? titleWidget!
-        : Text(
-            titleText ?? '',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyLarge!.copyWith(color: Colors.black),
-          );
+        : Text(titleText ?? '');
     return AppBar(
       leading: leading,
       title: subtitle == null
@@ -64,7 +59,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   subtitle ?? '',
                   style: Theme.of(
                     context,
-                  ).textTheme.bodySmall!.copyWith(color: Colors.grey.shade800),
+                  ).appBarTheme.titleTextStyle!.copyWith(fontSize: 10, fontWeight: FontWeight.normal),
                 ),
               ],
             ),
@@ -75,7 +70,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               Padding(
                 padding: EdgeInsets.only(right: 16),
                 child: InkWell(
-                  onTap: onMenuTap ?? () => Scaffold.of(context).openEndDrawer(),
+                  onTap:
+                      onMenuTap ?? () => Scaffold.of(context).openEndDrawer(),
                   child: Container(
                     width: 40,
                     height: 40,
@@ -412,7 +408,7 @@ class NavigationButtons {
         leadingIcon: Icons.label,
         title: 'View All Notes',
         trailingText: totalCount.toString(),
-        onTap: () => Get.offAllNamed(Routes.notes),
+        onTap: () => navigate(routeName: Routes.notes),
       ),
       TextButton(
         onPressed: () => navigate(routeName: Routes.noteLabels),
@@ -617,97 +613,100 @@ class AdditionalOptions {
                 context: context,
                 title: 'Delete Confirmation',
                 content: 'Are you sure you want to delete selections.',
-                buttonText1: 'Delete',
-                colorForButton1: Colors.red,
-                buttonText2: 'Cancel',
-                colorForButton2: Colors.grey,
-                onTapOption1: () async {
-                  final noteIds = notes
-                      ?.map((item) => item.id)
-                      .whereType<String>()
-                      .toList();
-                  final taskIds = tasks
-                      ?.map((item) => item.id)
-                      .whereType<String>()
-                      .toList();
-                  final labelIds = labels
-                      ?.map((item) => item.id)
-                      .whereType<String>()
-                      .toList();
+                buttonDetails: [
+                  ButtonDetails(
+                    text: "Delete",
+                    buttonColor: Colors.red,
+                    onTapOption: () async {
+                      final noteIds = notes
+                          ?.map((item) => item.id)
+                          .whereType<String>()
+                          .toList();
+                      final taskIds = tasks
+                          ?.map((item) => item.id)
+                          .whereType<String>()
+                          .toList();
+                      final labelIds = labels
+                          ?.map((item) => item.id)
+                          .whereType<String>()
+                          .toList();
 
-                  print(
-                    "Note ids length (preparing delete): ${noteIds?.length}",
-                  );
-                  print(
-                    "Task ids length (preparing delete): ${taskIds?.length}",
-                  );
-                  // print("Task id: ${tasks?.first.id}");
-                  // print("isForShared: $isForShared");
-                  // print("noteIds: $noteIds");
-                  // print("taskIds: $taskIds");
-                  // print("labelIds: $labelIds");
-                  // print("controller type: ${controller.runtimeType}");
-                  // print("groupId: $groupId, groupType: $groupType");
+                      print(
+                        "Note ids length (preparing delete): ${noteIds?.length}",
+                      );
+                      print(
+                        "Task ids length (preparing delete): ${taskIds?.length}",
+                      );
+                      // print("Task id: ${tasks?.first.id}");
+                      // print("isForShared: $isForShared");
+                      // print("noteIds: $noteIds");
+                      // print("taskIds: $taskIds");
+                      // print("labelIds: $labelIds");
+                      // print("controller type: ${controller.runtimeType}");
+                      // print("groupId: $groupId, groupType: $groupType");
 
-                  if (isForShared && noteIds != null) {
-                    if (groupId != null && groupType != null) {
-                      print("Delete Shared Notes.");
-                      final noteController = Get.find<NoteController>(
-                        tag: 'group_${groupId}_note',
-                      );
-                      await noteController.deleteShared(
-                        noteIds,
-                        groupId,
-                        groupType,
-                      );
-                    }
-                  }
-                  if (isForShared && taskIds != null) {
-                    if (groupId != null && groupType != null) {
-                      print("Delete Shared Tasks.");
-                      final taskController = Get.find<TaskController>(
-                        tag: 'group_${groupId}_task',
-                      );
-                      await taskController.deleteShared(
-                        taskIds,
-                        groupId,
-                        groupType,
-                      );
-                    }
-                  }
-                  if (!isForShared) {
-                    if (noteIds != null) {
-                      print("Normal Delete Notes.");
-                      await controller.delete(noteIds);
-                    }
-                    if (taskIds != null) {
-                      print("Normal Delete Tasks.");
-                      await controller.delete(taskIds);
-                      for (String taskId in taskIds) {
-                        await flutterLocalNotificationsPlugin.cancel(
-                          taskId.hashCode,
-                        );
+                      if (isForShared && noteIds != null) {
+                        if (groupId != null && groupType != null) {
+                          print("Delete Shared Notes.");
+                          final noteController = Get.find<NoteController>(
+                            tag: 'group_${groupId}_note',
+                          );
+                          await noteController.deleteShared(
+                            noteIds,
+                            groupId,
+                            groupType,
+                          );
+                        }
                       }
-                    }
-                    if (labelIds != null) {
-                      print("Normal Delete Labels.");
-                      await controller.delete(labelIds);
-                    }
-                  }
+                      if (isForShared && taskIds != null) {
+                        if (groupId != null && groupType != null) {
+                          print("Delete Shared Tasks.");
+                          final taskController = Get.find<TaskController>(
+                            tag: 'group_${groupId}_task',
+                          );
+                          await taskController.deleteShared(
+                            taskIds,
+                            groupId,
+                            groupType,
+                          );
+                        }
+                      }
+                      if (!isForShared) {
+                        if (noteIds != null) {
+                          print("Normal Delete Notes.");
+                          await controller.delete(noteIds);
+                        }
+                        if (taskIds != null) {
+                          print("Normal Delete Tasks.");
+                          await controller.delete(taskIds);
+                          for (String taskId in taskIds) {
+                            await flutterLocalNotificationsPlugin.cancel(
+                              taskId.hashCode,
+                            );
+                          }
+                        }
+                        if (labelIds != null) {
+                          print("Normal Delete Labels.");
+                          await controller.delete(labelIds);
+                        }
+                      }
 
-                  if (controller.errorMessage.value.isNotEmpty) {
-                    CustomDialog.showError(
-                      "Error",
-                      controller.errorMessage.value,
-                    );
-                    return;
-                  }
-                  CustomDialog.showSuccess(
-                    "Success",
-                    "Successfully delete selections.",
-                  );
-                  onActionComplete?.call();
-                },
+                      if (controller.errorMessage.value.isNotEmpty) {
+                        CustomDialog.showError(
+                          "Error",
+                          controller.errorMessage.value,
+                        );
+                        return;
+                      }
+                      CustomDialog.showSuccess(
+                        "Success",
+                        "Successfully delete selections.",
+                      );
+                      onActionComplete?.call();
+                    },
+                  ),
+                  ButtonDetails(text: "Cancel", buttonColor: Colors.grey),
+                ],
               );
               break;
             case 'share':
@@ -742,49 +741,58 @@ class AdditionalOptions {
               buildConfirmationMessage(
                 context: context,
                 title: 'Share Confirmation',
-                buttonText1:
-                    (roleController.hasPermission(
-                              PermissionType.createShared,
-                            ) &&
-                            isForShared) ||
-                        !isForShared
-                    ? 'Share within app'
-                    : null,
-                colorForButton1: Colors.grey,
-                buttonText2: 'Share outside app',
-                colorForButton2: Colors.grey,
-                onTapOption1: () async {
-                  if (notes == null && tasks == null) {
-                    CustomDialog.showError("Error", "Nothing to share.");
-                    return;
-                  }
-                  await ShareFeature.shareInApp(
-                    context,
-                    notes: notes,
-                    tasks: tasks,
-                  );
-                  onActionComplete?.call();
-                },
-                onTapOption2: () async {
-                  final selectedList = [...?notes, ...?tasks];
-                  if (selectedList.length != 1) {
-                    CustomDialog.showError(
-                      "Error",
-                      "Please select only one item to share.",
-                    );
-                    return;
-                  }
-                  final item = selectedList.first;
-                  await ShareFeature.shareOutsideApp(
-                    context: context,
-                    shareTitle: "Share my ${item is Note ? "note" : "task"}",
-                    titleController:
-                        titleController ??
-                        TextEditingController(text: item.name),
-                    quillController: item is Note ? contentController : null,
-                  );
-                  onActionComplete?.call();
-                },
+                buttonDetails: [
+                  ButtonDetails(
+                    text:
+                        (roleController.hasPermission(
+                                  PermissionType.createShared,
+                                ) &&
+                                isForShared) ||
+                            !isForShared
+                        ? 'Share within app'
+                        : null,
+                    buttonColor: Colors.grey,
+                    onTapOption: () async {
+                      if (notes == null && tasks == null) {
+                        CustomDialog.showError("Error", "Nothing to share.");
+                        return;
+                      }
+                      await ShareFeature.shareInApp(
+                        context,
+                        notes: notes,
+                        tasks: tasks,
+                      );
+                      onActionComplete?.call();
+                    },
+                  ),
+                  ButtonDetails(
+                    text: "Share outside app",
+                    buttonColor: Colors.grey,
+                    onTapOption: () async {
+                      final selectedList = [...?notes, ...?tasks];
+                      if (selectedList.length != 1) {
+                        CustomDialog.showError(
+                          "Error",
+                          "Please select only one item to share.",
+                        );
+                        return;
+                      }
+                      final item = selectedList.first;
+                      await ShareFeature.shareOutsideApp(
+                        context: context,
+                        shareTitle:
+                            "Share my ${item is Note ? "note" : "task"}",
+                        titleController:
+                            titleController ??
+                            TextEditingController(text: item.name),
+                        quillController: item is Note
+                            ? contentController
+                            : null,
+                      );
+                      onActionComplete?.call();
+                    },
+                  ),
+                ],
               );
               break;
           }

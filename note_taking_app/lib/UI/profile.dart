@@ -261,30 +261,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      buttonText1: 'Delete',
-      colorForButton1: Colors.red,
-      buttonText2: 'Cancel',
-      colorForButton2: Colors.grey,
-      onTapOption1: () async {
-        final currentEmail = emailController.text.trim();
-        final confirmationEmail = emailConfirmationController.text.trim();
-        if (currentEmail != confirmationEmail) {
-          CustomDialog.showError(
-            "Error",
-            "Email does not match the current email.",
-          );
-          return;
-        }
+      buttonDetails: [
+        ButtonDetails(
+          text: "Delete",
+          buttonColor: Colors.red,
+          onTapOption: () async {
+            final currentEmail = emailController.text.trim();
+            final confirmationEmail = emailConfirmationController.text.trim();
+            if (currentEmail != confirmationEmail) {
+              CustomDialog.showError(
+                "Error",
+                "Email does not match the current email.",
+              );
+              return;
+            }
 
-        await authController.delete(currentEmail);
-        if (authController.errorMessage != null &&
-            authController.errorMessage!.isNotEmpty) {
-          CustomDialog.showError("Error", authController.errorMessage!);
-          return;
-        }
-        Get.offAllNamed(Routes.login);
-        CustomDialog.showSuccess("Success", "Successfully delete account.");
-      },
+            await authController.delete(currentEmail);
+            if (authController.errorMessage != null &&
+                authController.errorMessage!.isNotEmpty) {
+              CustomDialog.showError("Error", authController.errorMessage!);
+              return;
+            }
+            Get.offAllNamed(Routes.login);
+            CustomDialog.showSuccess("Success", "Successfully delete account.");
+          },
+        ),
+        ButtonDetails(text: "Cancel", buttonColor: Colors.grey),
+      ],
     );
   }
 

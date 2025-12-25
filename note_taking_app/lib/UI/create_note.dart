@@ -18,9 +18,9 @@ import 'package:note_taking_app/Model/Models/label_model.dart';
 import 'package:note_taking_app/Model/Models/note_model.dart';
 import 'package:note_taking_app/Service/conectivity_service.dart';
 import 'package:note_taking_app/Service/upload_image_service.dart';
-import 'package:note_taking_app/UI/Navigation/ui_scaffold_state.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
 import 'package:note_taking_app/UI/SharedComponents/confirmation_message.dart';
+import 'package:note_taking_app/UI/SharedComponents/info_button.dart';
 import 'package:note_taking_app/UI/SharedComponents/label_editor.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/SharedComponents/text_box.dart';
@@ -449,22 +449,40 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
     }
   }
 
-  void _showUnsavedChangesDialog() {
+  void _showUnsavedChangesDialog({
+    bool canSave = true,
+    bool canDiscard = false,
+    bool canCancel = true,
+  }) {
     buildConfirmationMessage(
       context: context,
       title: 'Unsaved Changes. Would you like to save changes?',
-      onTapOption1: () async => await _saveChanges(
-        successAction: (_) async {
-          Get.back();
-          Get.find<UIScaffoldState>().openDrawer();
-        },
-      ),
-      buttonText1: "Save",
-      colorForButton1: Theme.of(
-        context,
-      ).elevatedButtonTheme.style?.backgroundColor?.resolve({}),
-      buttonText2: "Cancel",
-      colorForButton2: Colors.grey,
+      buttonDetails: [
+        if (canSave)
+          ButtonDetails(
+            text: "Save",
+            buttonColor:
+                Theme.of(
+                  context,
+                ).elevatedButtonTheme.style?.backgroundColor?.resolve({}) ??
+                Colors.black,
+            onTapOption: () async => await _saveChanges(
+              successAction: (note) async {
+                print("SAVE SUCCESS: note = ${note?.runtimeType}, id = ${note?.id}");
+
+                print("Popping NoteDetailScreen with result");
+                Get.back(result: note);
+              },
+            ),
+          ),
+        if (canDiscard)
+          ButtonDetails(
+            text: "Discard",
+            buttonColor: Colors.red,
+            onTapOption: () async => Get.back(),
+          ),
+        if (canCancel) ButtonDetails(text: "Cancel", buttonColor: Colors.grey),
+      ],
     );
   }
 
@@ -474,13 +492,28 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        await _saveChanges(successAction: (note) => Get.back(result: note));
-        Get.back();
+        if (hasChanged) {
+          _showUnsavedChangesDialog(canDiscard: true);
+        } else {
+          Get.back();
+        }
       },
       child: Scaffold(
         key: _scaffoldKey,
         appBar: CustomAppBar(
-          titleText: title,
+          titleWidget: Row(
+            children: [
+              Text(title),
+              CustomInfoButton(
+                infoDetails: [
+                  Info(
+                    text:
+                        "To save changes, select the back button to apply changes.",
+                  ),
+                ],
+              ),
+            ],
+          ),
           subtitle: widget.description,
           actions:
               (note != null &&

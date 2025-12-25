@@ -84,7 +84,9 @@ class _AddAttachmentScreenState extends State<AddAttachmentScreen> {
                     values: [ComponentType.note, ComponentType.task],
                     indicatorSize: Size.fromWidth(100),
                     indicatorAnimationType: AnimationType.onSelected,
-                    style: ToggleStyle(indicatorColor: Theme.of(context).colorScheme.primary),
+                    style: ToggleStyle(
+                      indicatorColor: Theme.of(context).colorScheme.primary,
+                    ),
                     iconBuilder: (value) {
                       final isSelected = value == selectedType;
                       return Text(
@@ -120,8 +122,8 @@ class _AddAttachmentScreenState extends State<AddAttachmentScreen> {
                                 mode: Mode.create,
                                 hideAttachmentButton: true,
                               ),
-                            )
-                            as AttachmentComponent?;
+                            );
+                    print("Type of result: $result");
                   } else {
                     result =
                         await Get.toNamed(Routes.createTask)
@@ -136,12 +138,16 @@ class _AddAttachmentScreenState extends State<AddAttachmentScreen> {
                       attachmentType: selectedType,
                       attachmentId: result.id!,
                     );
+                    final resolvedAttachment = ResolvedAttachment(
+                      attachment: attachment,
+                      attachmentComponent: result,
+                    );
 
                     if (filterableEntity != null &&
                         filterableEntity?.id != null) {
                       await attachmentController.createMultiple([attachment]);
                     } else {
-                      attachmentController.createTemporary([result]);
+                      attachmentController.createTemporary([resolvedAttachment]);
                     }
                   }
                 },
@@ -157,34 +163,45 @@ class _AddAttachmentScreenState extends State<AddAttachmentScreen> {
                   if (selectedType == ComponentType.note) {
                     final selectedNotes =
                         await Get.toNamed(Routes.selectNote) as List<Note>;
-                    final List<Attachment> attachments = selectedNotes
-                        .map(
-                          (note) => Attachment(
+
+                    List<Attachment> attachments = [];
+                    final List<ResolvedAttachment> resolvedAttachments =
+                        selectedNotes.map((note) {
+                          final attachment = Attachment(
                             id: UniqueKey().toString(),
                             attachmentType: ComponentType.note,
                             attachmentId: note.id ?? "",
-                          ),
-                        )
-                        .toList();
+                          );
+                          attachments.add(attachment);
+                          return ResolvedAttachment(
+                            attachment: attachment,
+                            attachmentComponent: note,
+                          );
+                        }).toList();
                     if (filterableEntity?.id == null) {
-                      attachmentController.createTemporary(selectedNotes);
+                      attachmentController.createTemporary(resolvedAttachments);
                     } else {
                       await attachmentController.createMultiple(attachments);
                     }
                   } else if (selectedType == ComponentType.task) {
                     final selectedTasks =
                         await Get.toNamed(Routes.selectTask) as List<Task>;
-                    final List<Attachment> attachments = selectedTasks
-                        .map(
-                          (task) => Attachment(
+                    List<Attachment> attachments = [];
+                    final List<ResolvedAttachment> resolvedAttachments =
+                        selectedTasks.map((task) {
+                          final attachment = Attachment(
                             id: UniqueKey().toString(),
                             attachmentType: ComponentType.task,
                             attachmentId: task.id ?? "",
-                          ),
-                        )
-                        .toList();
+                          );
+                          attachments.add(attachment);
+                          return ResolvedAttachment(
+                            attachment: attachment,
+                            attachmentComponent: task,
+                          );
+                        }).toList();
                     if (filterableEntity?.id == null) {
-                      attachmentController.createTemporary(selectedTasks);
+                      attachmentController.createTemporary(resolvedAttachments);
                     } else {
                       await attachmentController.createMultiple(attachments);
                     }
@@ -195,9 +212,7 @@ class _AddAttachmentScreenState extends State<AddAttachmentScreen> {
                     );
                   }
                 },
-                child: Text(
-                  "Select From Existing",
-                ),
+                child: Text("Select From Existing"),
               ),
             ),
           ],

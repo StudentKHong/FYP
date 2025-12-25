@@ -170,6 +170,12 @@ class TaskController extends Controller<Task> {
         }).toList();
         list.assignAll(tasksWithLabels);
         filteredList.assignAll(tasksWithLabels);
+
+        // Refilter if current filter exists.
+        if (currentFilter.value != null &&
+            currentFilter.value!.labelNames != null) {
+          filter();
+        }
         isLoading.value = false;
       },
       onError: (ex) {
@@ -177,36 +183,31 @@ class TaskController extends Controller<Task> {
         isLoading.value = false;
       },
     );
-
-    // Refilter if current filter exists.
-    if (currentFilter.value != null &&
-        currentFilter.value!.labelNames != null) {
-      filter();
-    }
   }
 
   Future<void> getByGroup(String groupId, String groupType) async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = "";
-      // Fetch tasks.
-      _watchByGroupSubscription = _taskRepository
-          .watchByGroup(groupId, groupType)
-          .listen((notes) {
+    isLoading.value = true;
+    errorMessage.value = "";
+    // Fetch tasks.
+    _watchByGroupSubscription = _taskRepository
+        .watchByGroup(groupId, groupType)
+        .listen(
+          (notes) {
             list.assignAll(notes);
             filteredList.assignAll(notes);
-          });
+            isLoading.value = false;
 
-      // Refilter if current filter exists.
-      if (currentFilter.value != null &&
-          currentFilter.value!.labelNames != null) {
-        filter();
-      }
-    } catch (ex) {
-      errorMessage.value = "Something went wrong.";
-    } finally {
-      isLoading.value = false;
-    }
+            // Refilter if current filter exists.
+            if (currentFilter.value != null &&
+                currentFilter.value!.labelNames != null) {
+              filter();
+            }
+          },
+          onError: (ex) {
+            errorMessage.value = ex.toString();
+            isLoading.value = false;
+          },
+        );
   }
 
   Future<void> getByLabel(String labelId) async {
@@ -287,8 +288,14 @@ class TaskController extends Controller<Task> {
     try {
       isLoading.value = true;
       errorMessage.value = "";
+      final taskToCreate = task.copyWith(
+        labelName: task.label?.name,
+        label: null,
+        replaceLabel: true,
+        isPinned: false,
+      );
       final newEntity = await (repository as TaskRepository).editShared(
-        task,
+        taskToCreate,
         groupId,
         groupType,
       );
@@ -312,28 +319,11 @@ class TaskController extends Controller<Task> {
       errorMessage.value = "";
       // Delete selected shared tasks.
       final tasks = list.where((task) => taskIds.contains(task.id)).toList();
-      print("Tasks: ${tasks.map((task) => task.name)}");
-      print("Group Id: $groupId");
-      print("Group Type: $groupType");
       await (repository as TaskRepository).deleteShared(
         taskIds,
         groupId,
         groupType,
       );
-
-      // // Update the count of the label.
-      // final labelsToUpdate = <String, Label>{};
-      // for (var task in tasks) {
-      //   final label = task.label;
-      //   if (label != null && label.id != null) {
-      //     labelsToUpdate[label.id!] = label;
-      //   }
-      // }
-      // await Future.wait(
-      //   labelsToUpdate.values.map(
-      //     (label) => _labelController.decrementCount(label),
-      //   ),
-      // );
 
       // Remove tasks from lists.
       final deletedNoteIds = tasks.map((task) => task.id).toList();
@@ -417,13 +407,24 @@ class TaskController extends Controller<Task> {
       isArchived: isArchived,
       isPinned: isArchived ? false : task.isPinned,
     );
-    await edit([updatedItem], pushToTop: false);
+    await repository.edit([updatedItem]);
+
+    if (task.isArchived != null && task.isArchived!) {
+      filteredList.removeWhere((item) => item.id == task.id);
+      final mainController = Get.find<TaskController>();
+      mainController.filteredList.add(updatedItem);
+    } else {
+      filteredList.removeWhere((item) => item.id == task.id);
+      final archivedNotesController = Get.find<TaskController>(
+        tag: "tasks_archived",
+      );
+      archivedNotesController.filteredList.add(updatedItem);
+    }
   }
 
   @override
   void filter({DateTimeRange? taskPeriod}) {
     try {
-      isLoading.value = true;
       errorMessage.value = "";
       if (currentFilter.value == null || currentFilter.value!.isEmpty) {
         return;
@@ -440,8 +441,6 @@ class TaskController extends Controller<Task> {
       );
     } catch (e) {
       errorMessage.value = "Something went wrong";
-    } finally {
-      isLoading.value = false;
     }
   }
 

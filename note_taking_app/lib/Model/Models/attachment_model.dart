@@ -2,8 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:note_taking_app/Model/Models/entity_model.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
-// import 'package:note_taking_app/Model/Models/note_model.dart';
-// import 'package:note_taking_app/Model/Models/task_model.dart';
 
 class Attachment implements BaseEntity {
   @override
@@ -85,4 +83,11 @@ abstract class AttachmentComponent extends BaseEntity {
   //   }
   //   throw Exception('Invalid attachment.');
   // }
+}
+
+class ResolvedAttachment {
+  final Attachment attachment;
+  final AttachmentComponent attachmentComponent;
+
+  ResolvedAttachment({required this.attachment, required this.attachmentComponent});
 }

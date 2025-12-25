@@ -13,11 +13,6 @@ enum TeamMemberRole {
     final String cleanedRole = role.toLowerCase().trim();
     return _roleMap[cleanedRole];
   }
-
-  // static TeamMemberRole? convertUserTypeToMemberRole(UserType userType) {
-  //   final role = userType.name;
-  //   return _roleMap[role];
-  // }
 }
 
 class TeamMember {

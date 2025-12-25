@@ -36,7 +36,7 @@ class NoteRepository extends UserRepository<Note> {
   @override
   Stream<List<Note>> watchAll() {
     return collection
-        .where('isArchived', isNotEqualTo: true)
+        .where('isArchived', isEqualTo: false)
         .orderBy('isPinned', descending: true)
         .orderBy('pinnedAt')
         .orderBy('updatedAt', descending: true)
@@ -64,6 +64,8 @@ class NoteRepository extends UserRepository<Note> {
         )
         .doc(groupId)
         .collection('shared_notes');
+    print("Group Id: $groupId");
+    print("Group Type: $groupType");
     return collection
         .orderBy('isPinned', descending: true)
         .orderBy('pinnedAt')

@@ -8,6 +8,7 @@ import 'package:note_taking_app/Model/Models/class_model.dart';
 import 'package:note_taking_app/Model/Models/group_model.dart';
 import 'package:note_taking_app/Model/Models/team_model.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
+import 'package:note_taking_app/UI/SharedComponents/confirmation_message.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/SharedComponents/text_box.dart';
 
@@ -87,7 +88,9 @@ class _ClassTeamDetailsScreenState extends State<ClassTeamDetailsScreen> {
                             '$groupType Description:',
                             style: Theme.of(context).textTheme.bodyLarge,
                           ),
-                          if (roleController.hasPermission(PermissionType.createClass))
+                          if (roleController.hasPermission(
+                            PermissionType.createClass,
+                          ))
                             IconButton(
                               onPressed: () {
                                 setState(() {
@@ -102,60 +105,50 @@ class _ClassTeamDetailsScreenState extends State<ClassTeamDetailsScreen> {
                       ),
                       IconButton(
                         onPressed: () async {
-                          final response = await showDialog(
+                          await buildConfirmationMessage(
                             context: context,
-                            builder: (context) {
-                              return AlertDialog(
-                                title: Text('Leave $groupType Confirmation'),
-                                content: Text(
-                                  'Are you sure you want to leave ${groupType.toLowerCase()}.',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, true),
-                                    style: ButtonStyle(
-                                      backgroundColor: WidgetStateProperty.all(
-                                        Colors.green,
-                                      ),
-                                    ),
-                                    child: Text('Yes'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, false),
-                                    style: ButtonStyle(
-                                      backgroundColor: WidgetStateProperty.all(
-                                        Colors.red,
-                                      ),
-                                    ),
-                                    child: Text('No'),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                          if (response) {
-                            if (widget.groupObject.id != null) {
-                              await classController.leave(
-                                widget.groupObject.id!,
-                              );
-                            }
+                            title: 'Leave $groupType Confirmation',
+                            content:
+                                'Are you sure you want to leave ${groupType.toLowerCase()}.',
+                            buttonDetails: [
+                              ButtonDetails(
+                                text: 'Yes',
+                                buttonColor: Colors.green,
+                                onTapOption: () async {
+                                  Get.back();
+                                  await classController.leave(
+                                    widget.groupObject.id!,
+                                  );
+                                  if (widget.groupObject.id != null) {
+                                    await classController.leave(
+                                      widget.groupObject.id!,
+                                    );
+                                  }
 
-                            if (classController.errorMessage.value.isNotEmpty) {
-                              CustomDialog.showError(
-                                "Error",
-                                classController.errorMessage.value,
-                              );
-                              classController.errorMessage.value = "";
-                            }
-                          }
-                          CustomDialog.showSuccess(
-                            "Success",
-                            "Successfully leave ${groupType.toLowerCase()}.",
+                                  if (classController
+                                      .errorMessage
+                                      .value
+                                      .isNotEmpty) {
+                                    CustomDialog.showError(
+                                      "Error",
+                                      classController.errorMessage.value,
+                                    );
+                                    return;
+                                  }
+                                  CustomDialog.showSuccess(
+                                    "Success",
+                                    "Successfully leave ${groupType.toLowerCase()}.",
+                                  );
+                                },
+                              ),
+                              ButtonDetails(
+                                text: 'No',
+                                buttonColor: Colors.red,
+                              ),
+                            ],
                           );
                         },
-                        icon: Icon(Icons.exit_to_app),
+                        icon: Icon(Icons.exit_to_app, color: Colors.red),
                       ),
                     ],
                   ),
@@ -185,9 +178,17 @@ class _ClassTeamDetailsScreenState extends State<ClassTeamDetailsScreen> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Text(
-                        "$groupType Code: ${widget.groupObject.code}",
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(text: "$groupType Code: "),
+                            TextSpan(
+                              text: widget.groupObject.code.toString(),
+                              style: Theme.of(context).textTheme.bodyLarge!
+                                  .copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(width: 5),
                       IconButton(
@@ -201,7 +202,10 @@ class _ClassTeamDetailsScreenState extends State<ClassTeamDetailsScreen> {
                             "Code copied to clipboard!",
                           );
                         },
-                        icon: Icon(Icons.copy),
+                        icon: Icon(
+                          Icons.copy,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                       ),
                     ],
                   ),

@@ -11,6 +11,7 @@ import 'package:note_taking_app/UI/SharedComponents/loading_state.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/create_note.dart';
 import 'package:note_taking_app/UI/create_task.dart';
+import 'package:note_taking_app/UI/list_screen.dart';
 
 class AttachmentScreen {
   static Future<Object?> displayAttachments({
@@ -50,6 +51,9 @@ class AttachmentScreen {
       context: context,
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (context, animation, secondaryAnimation) {
+        SelectionMode selectionMode = SelectionMode.none;
+        final List<String> selectedAttachments = [];
+
         return Material(
           type: MaterialType.transparency,
           child: Align(
@@ -60,36 +64,299 @@ class AttachmentScreen {
               height: MediaQuery.of(context).size.height * 0.7,
               margin: EdgeInsets.symmetric(vertical: 30),
               decoration: BoxDecoration(color: Colors.white),
-              child: Column(
-                children: [
-                  Align(
-                    alignment: Alignment.topLeft,
-                    child: IconButton(
-                      onPressed: () => Get.back(),
-                      icon: Icon(Icons.last_page),
-                      color: Colors.black,
-                    ),
-                  ),
-                  Expanded(
-                    child: Obx(() {
-                      final listToShow = (entity == null || entity.id == null)
-                          ? attachmentController.temporaryList
-                          : attachmentController.attachmentComponents;
+              child: StatefulBuilder(
+                builder: (context, setState) {
+                  return Column(
+                    children: [
+                      Align(
+                        alignment: Alignment.topLeft,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            IconButton(
+                              onPressed: () => Get.back(),
+                              icon: Icon(Icons.last_page),
+                              color: Colors.black,
+                            ),
+                            if (selectedAttachments.isNotEmpty)
+                              IconButton(
+                                onPressed: () async {
+                                  debugPrint("🗑️ Delete button pressed");
+                                  debugPrint(
+                                    "Selected attachments: $selectedAttachments",
+                                  );
 
-                      if (attachmentController.isLoading.value &&
-                          listToShow.isEmpty) {
-                        return const LoadingShimmer();
-                      }
+                                  if (selectedAttachments.isEmpty) {
+                                    debugPrint(
+                                      "⚠️ No attachments selected, aborting delete",
+                                    );
+                                    return;
+                                  }
+                                  await attachmentController.delete(
+                                    selectedAttachments,
+                                  );
+                                  if (attachmentController
+                                      .errorMessage
+                                      .value
+                                      .isNotEmpty) {
+                                    CustomDialog.showError(
+                                      "Error",
+                                      attachmentController.errorMessage.value,
+                                    );
+                                  } else {
+                                    CustomDialog.showSuccess(
+                                      "Success",
+                                      "Successfully delete attachments.",
+                                    );
+                                    setState(() {
+                                      selectedAttachments.clear();
+                                    });
+                                  }
+                                },
+                                icon: Icon(Icons.delete),
+                                color: Colors.red,
+                              ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Obx(() {
+                          if (attachmentController.isLoading.value) {
+                            return const LoadingShimmer();
+                          }
 
-                      return Column(
-                        children: [
-                          listToShow.isEmpty
-                              ? Expanded(
-                                  child: EmptyState(
-                                    icon: Icons.attachment_outlined,
-                                    message: "No attachments yet.",
-                                    actionText: "Create an attachment.",
-                                    action: () {
+                          final listToShow =
+                              (entity == null || entity.id == null)
+                              ? attachmentController.temporaryList
+                              : attachmentController.resolvedAttachments;
+
+                          return Column(
+                            children: [
+                              listToShow.isEmpty
+                                  ? Expanded(
+                                      child: EmptyState(
+                                        icon: Icons.attachment_outlined,
+                                        message: "No attachments yet.",
+                                        actionText: "Create an attachment.",
+                                        action: () {
+                                          Navigator.of(context).pop();
+                                          Get.toNamed(
+                                            Routes.addAttachment,
+                                            arguments: {
+                                              "controller":
+                                                  attachmentController,
+                                              "entity": entity,
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    )
+                                  : Expanded(
+                                      child: ListView.builder(
+                                        padding: EdgeInsets.all(10),
+                                        physics: ScrollPhysics(),
+                                        itemCount: listToShow.length,
+                                        itemBuilder: (context, index) {
+                                          final resolvedAttachments =
+                                              listToShow[index];
+                                          final isSelected =
+                                              resolvedAttachments
+                                                      .attachment
+                                                      .id !=
+                                                  null
+                                              ? selectedAttachments.contains(
+                                                  resolvedAttachments
+                                                      .attachment
+                                                      .id,
+                                                )
+                                              : false;
+
+                                          return Stack(
+                                            children: [
+                                              CustomExtendedCard(
+                                                title: resolvedAttachments
+                                                    .attachmentComponent
+                                                    .name,
+                                                content: [
+                                                  resolvedAttachments
+                                                          .attachmentComponent
+                                                          .description ??
+                                                      '',
+                                                  resolvedAttachments
+                                                              .attachmentComponent
+                                                              .createdAt !=
+                                                          null
+                                                      ? DateFormat.yMd().format(
+                                                          resolvedAttachments
+                                                              .attachmentComponent
+                                                              .createdAt!,
+                                                        )
+                                                      : '',
+                                                ],
+                                                otherDetails: [
+                                                  resolvedAttachments
+                                                                  .attachmentComponent
+                                                                  .label !=
+                                                              null &&
+                                                          resolvedAttachments
+                                                                  .attachmentComponent
+                                                                  .label!
+                                                                  .id !=
+                                                              null
+                                                      ? resolvedAttachments
+                                                            .attachmentComponent
+                                                            .label!
+                                                            .name
+                                                      : '',
+                                                ],
+                                                onTap:
+                                                    selectionMode !=
+                                                        SelectionMode.none
+                                                    ? () {
+                                                        setState(() {
+                                                          if (isSelected) {
+                                                            selectedAttachments
+                                                                .remove(
+                                                                  resolvedAttachments
+                                                                      .attachment
+                                                                      .id,
+                                                                );
+                                                            if (selectedAttachments
+                                                                .isEmpty) {
+                                                              selectionMode =
+                                                                  SelectionMode
+                                                                      .none;
+                                                            }
+                                                          } else {
+                                                            if (resolvedAttachments
+                                                                    .attachment
+                                                                    .id ==
+                                                                null) {
+                                                              return;
+                                                            }
+                                                            selectedAttachments.add(
+                                                              resolvedAttachments
+                                                                  .attachment
+                                                                  .id!,
+                                                            );
+                                                          }
+                                                        });
+                                                      }
+                                                    : () {
+                                                        if (resolvedAttachments
+                                                                .attachmentComponent
+                                                            is Note) {
+                                                          final note =
+                                                              resolvedAttachments
+                                                                      .attachmentComponent
+                                                                  as Note;
+                                                          Get.to(
+                                                            NoteDetailScreen(
+                                                              mode: Mode.edit,
+                                                              note: note,
+                                                              initialLabel:
+                                                                  note.label,
+                                                              hideAttachmentButton:
+                                                                  true,
+                                                            ),
+                                                            preventDuplicates:
+                                                                false,
+                                                          );
+                                                          attachmentController
+                                                              .getList();
+                                                        } else if (resolvedAttachments
+                                                                .attachmentComponent
+                                                            is Task) {
+                                                          final task =
+                                                              resolvedAttachments
+                                                                      .attachmentComponent
+                                                                  as Task;
+                                                          Get.to(
+                                                            TaskDetailScreen(
+                                                              mode: Mode.edit,
+                                                              task: task,
+                                                              initialLabel:
+                                                                  task.label,
+                                                            ),
+                                                            preventDuplicates:
+                                                                false,
+                                                          );
+                                                          attachmentController
+                                                              .getList();
+                                                        }
+                                                      },
+                                                onLongPress:
+                                                    selectionMode ==
+                                                        SelectionMode.none
+                                                    ? () {
+                                                        if (resolvedAttachments
+                                                                .attachment
+                                                                .id ==
+                                                            null) {
+                                                          return;
+                                                        }
+                                                        setState(() {
+                                                          selectionMode =
+                                                              SelectionMode
+                                                                  .regular;
+                                                          selectedAttachments.add(
+                                                            resolvedAttachments
+                                                                .attachment
+                                                                .id!,
+                                                          );
+                                                        });
+                                                      }
+                                                    : null,
+                                              ),
+                                              if (selectionMode !=
+                                                  SelectionMode.none)
+                                                Positioned(
+                                                  top: 8,
+                                                  right: 8,
+                                                  child: Checkbox(
+                                                    value: isSelected,
+                                                    onChanged: (_) {
+                                                      setState(() {
+                                                        if (isSelected) {
+                                                          selectedAttachments
+                                                              .remove(
+                                                                resolvedAttachments
+                                                                    .attachment
+                                                                    .id,
+                                                              );
+                                                          if (selectedAttachments
+                                                              .isEmpty) {
+                                                            selectionMode ==
+                                                                SelectionMode
+                                                                    .none;
+                                                          }
+                                                        } else {
+                                                          if (resolvedAttachments
+                                                                  .attachment
+                                                                  .id !=
+                                                              null) {
+                                                            selectedAttachments.add(
+                                                              resolvedAttachments
+                                                                  .attachment
+                                                                  .id!,
+                                                            );
+                                                          }
+                                                        }
+                                                      });
+                                                    },
+                                                  ),
+                                                ),
+                                            ],
+                                          );
+                                        },
+                                      ),
+                                    ),
+                              Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: () {
                                       Navigator.of(context).pop();
                                       Get.toNamed(
                                         Routes.addAttachment,
@@ -99,81 +366,17 @@ class AttachmentScreen {
                                         },
                                       );
                                     },
-                                  ),
-                                )
-                              : Expanded(
-                                  child: ListView.builder(
-                                    padding: EdgeInsets.all(10),
-                                    physics: ScrollPhysics(),
-                                    itemCount: listToShow.length,
-                                    itemBuilder: (context, index) {
-                                      final attachment = listToShow[index];
-                                      return CustomExtendedCard(
-                                        title: attachment.name,
-                                        content: [attachment.description ?? ''],
-                                        otherDetails: [
-                                          attachment.label != null &&
-                                                  attachment.label!.id != null
-                                              ? attachment.label!.id!
-                                              : '',
-                                          attachment.createdAt != null
-                                              ? DateFormat.yMd().format(
-                                                  attachment.createdAt!,
-                                                )
-                                              : '',
-                                        ],
-                                        onTap: () {
-                                          if (attachment is Note) {
-                                            Get.to(
-                                              NoteDetailScreen(
-                                                mode: Mode.edit,
-                                                note: attachment,
-                                                initialLabel: attachment.label,
-                                                hideAttachmentButton: true,
-                                              ),
-                                              preventDuplicates: false,
-                                            );
-                                            attachmentController.getList();
-                                          } else if (attachment is Task) {
-                                            Get.to(
-                                              TaskDetailScreen(
-                                                mode: Mode.edit,
-                                                task: attachment,
-                                                initialLabel: attachment.label,
-                                              ),
-                                              preventDuplicates: false,
-                                            );
-                                            attachmentController.getList();
-                                          }
-                                        },
-                                      );
-                                    },
+                                    child: Text('Add'),
                                   ),
                                 ),
-                          Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                  Get.toNamed(
-                                    Routes.addAttachment,
-                                    arguments: {
-                                      "controller": attachmentController,
-                                      "entity": entity,
-                                    },
-                                  );
-                                },
-                                child: Text('Add'),
                               ),
-                            ),
-                          ),
-                        ],
-                      );
-                    }),
-                  ),
-                ],
+                            ],
+                          );
+                        }),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),

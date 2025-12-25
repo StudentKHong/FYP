@@ -15,7 +15,7 @@ import 'package:note_taking_app/Model/Models/group_model.dart';
 import 'package:note_taking_app/Model/Models/note_model.dart';
 import 'package:note_taking_app/Model/Models/task_model.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
-import 'package:note_taking_app/UI/note_task.dart';
+import 'package:note_taking_app/UI/list_screen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:vsc_quill_delta_to_html/vsc_quill_delta_to_html.dart';
@@ -29,7 +29,7 @@ class ShareFeature {
     final String groupType = isClass ? 'class' : 'team';
 
     // Gather groups where users are going to share the note to.
-    final List<Group> groups = await Get.to(
+    final List<Group>? groups = await Get.to(
       ListScreen<Group>(
         title: 'Select ${isClass ? "classes" : "teams"} to proceed',
         pageType: isClass ? ListScreenType.classes : ListScreenType.teams,
@@ -39,6 +39,8 @@ class ShareFeature {
             : Get.find<TeamController>(),
       ),
     );
+
+    if (groups == null) return;
 
     bool hasError = false;
     for (final group in groups) {
@@ -160,7 +162,7 @@ class ShareFeature {
         ),
       );
     } catch (ex) {
-      CustomDialog.showError("Error", ex.toString());
+      CustomDialog.showError("Error", "Failed to share note.");
     }
   }
 }

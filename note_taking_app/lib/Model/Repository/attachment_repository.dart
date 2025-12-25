@@ -1,8 +1,11 @@
+import 'package:get/get.dart';
 import 'package:note_taking_app/Model/Models/attachment_model.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';
+import 'package:note_taking_app/Model/Models/label_model.dart';
 import 'package:note_taking_app/Model/Models/note_model.dart';
 import 'package:note_taking_app/Model/Models/task_model.dart';
 import 'package:note_taking_app/Model/Repository/crud_repository.dart';
+import 'package:note_taking_app/Model/Repository/note_repository.dart';
 import 'package:note_taking_app/Service/offline_first_service.dart';
 
 class AttachmentRepository extends UserRepository<Attachment> {
@@ -19,36 +22,67 @@ class AttachmentRepository extends UserRepository<Attachment> {
   @override
   String? get orderByField => null;
 
-  Stream<List<AttachmentComponent>> getList() {
+  Stream<List<ResolvedAttachment>> getList() {
     final uid = authController.user.value?.uid;
     if (uid == null) {
       return Stream.empty();
     }
 
     return watchAll().asyncMap((attachments) async {
-      final List<AttachmentComponent> noteTask = [];
+      final List<ResolvedAttachment> noteTask = [];
       for (var attachment in attachments) {
+
         if (attachment.attachmentType == ComponentType.note) {
           final noteCollection = Repository.baseDocument(
             uid,
           ).collection('notes');
-          print(
-            "DEBUG Path: Attempting to fetch note: ${noteCollection.doc(attachment.attachmentId).path}",
+          final noteDocumentSnapshot = await noteCollection
+              .doc(attachment.attachmentId)
+              .get();
+
+          Note note = Note.fromFirestore(noteDocumentSnapshot);
+          AttachmentComponent attachmentContent = note;
+          if (note.label?.id != null) {
+            final labelDocumentSnapshot = await Repository.baseDocument(
+              uid,
+            ).collection('labels').doc(note.label!.id).get();
+
+            final label = Label.fromFirestore(labelDocumentSnapshot);
+            attachmentContent = note.copyWith(label: label);
+          }
+          noteTask.add(
+            ResolvedAttachment(
+              attachment: attachment,
+              attachmentComponent: attachmentContent,
+            ),
           );
-          final note = await noteCollection.doc(attachment.attachmentId).get();
-          noteTask.add(Note.fromFirestore(note));
         } else if (attachment.attachmentType == ComponentType.task) {
           final taskCollection = Repository.baseDocument(
             uid,
           ).collection('tasks');
-          print(
-            "DEBUG Path: Attempting to fetch note: ${taskCollection.doc(attachment.attachmentId).path}",
+          final taskDocumentSnapshot = await taskCollection
+              .doc(attachment.attachmentId)
+              .get();
+
+          Task task = Task.fromFirestore(taskDocumentSnapshot);
+
+          AttachmentComponent attachmentContent = task;
+          if (task.label?.id != null) {
+            final labelDocumentSnapshot = await Repository.baseDocument(
+              uid,
+            ).collection('labels').doc(task.label?.id).get();
+
+            final label = Label.fromFirestore(labelDocumentSnapshot);
+            attachmentContent = task.copyWith(label: label);
+          }
+          noteTask.add(
+            ResolvedAttachment(
+              attachment: attachment,
+              attachmentComponent: attachmentContent,
+            ),
           );
-          final task = await taskCollection.doc(attachment.attachmentId).get();
-          noteTask.add(Task.fromFirestore(task));
         }
       }
-      print("DEBUG Path: Final list size: ${noteTask.length}");
       return noteTask;
     });
   }

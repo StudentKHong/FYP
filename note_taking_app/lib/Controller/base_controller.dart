@@ -157,7 +157,6 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
 
   void sort() {
     try {
-      isLoading.value = true;
       errorMessage.value = "";
       if (currentSort.value == null || currentSort.value!.isEmpty) {
         return;
@@ -166,11 +165,10 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
       if (listToSort.isNotEmpty) {
         final sortedList = currentSort.value!.sort(listToSort);
         filteredList.assignAll(sortedList);
+        filteredList.refresh();
       }
     } catch (e) {
       errorMessage.value = "Something went wrong";
-    } finally {
-      isLoading.value = false;
     }
   }
 
@@ -238,14 +236,13 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
       // Update reactive list and filteredList.
       for (final updatedEntity in newEntities) {
         final index = list.indexWhere((item) => item.id == updatedEntity.id);
-
         if (index != -1) {
           if (pushToTop) {
             pushItemToTop(entity: updatedEntity, forFilteredList: false);
           } else {
             list[index] = updatedEntity;
           }
-        } else {}
+        }
         list.refresh();
 
         final filteredIndex = filteredList.indexWhere(
@@ -268,7 +265,7 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
               } else {
                 filteredList[filteredIndex] = updatedEntity;
               }
-            } else {}
+            }
           }
         }
         filteredList.refresh();
@@ -288,7 +285,7 @@ abstract class Controller<T extends BaseEntity> extends GetxController {
       list.removeWhere((item) => componentIds.contains(item.id));
       filteredList.removeWhere((item) => componentIds.contains(item.id));
     } catch (ex) {
-      errorMessage.value = "Failed to delete notes.";
+      errorMessage.value = "Failed to delete items.";
     } finally {
       isLoading.value = false;
     }
@@ -359,50 +356,6 @@ abstract class ComponentFilter<T extends BaseEntity> {
 
   List<T> filter(List<T> items);
 }
-
-// class NoteTaskFilter extends ComponentFilter<GroupContent> {
-//   final List<String>? status;
-//   final List<ComponentType>? componentTypes;
-
-//   NoteTaskFilter({
-//     super.labelNames,
-//     super.dateCreated,
-//     super.dateModified,
-//     this.status,
-//     this.componentTypes,
-//   });
-
-//   @override
-//   bool get isEmpty =>
-//       super.isEmpty &&
-//       (status == null || status!.isEmpty) &&
-//       (componentTypes == null || componentTypes!.isEmpty);
-
-//   @override
-//   List<GroupContent> filter(List<GroupContent> items) {
-//     final filteredList = items.where((item) {
-//       bool match = baseFilter(item);
-//       if (status != null && status!.isNotEmpty && item.isTaskStatusNotNull) {
-//         match &=
-//             status!.contains(
-//               Status.convertToString(item.memberTaskStatus!.taskStatus),
-//             ) &&
-//             match;
-//       } else {
-//         match = false;
-//       }
-
-//       if (componentTypes != null && componentTypes!.isNotEmpty) {
-//         final type = item.isSharedNoteNotNull
-//             ? ComponentType.note
-//             : ComponentType.task;
-//         match &= !componentTypes!.contains(type);
-//       }
-//       return match;
-//     }).toList();
-//     return filteredList;
-//   }
-// }
 
 class NoteFilter extends ComponentFilter<Note> {
   NoteFilter({super.labelNames, super.dateCreated, super.dateModified});

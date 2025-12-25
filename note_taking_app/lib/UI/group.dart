@@ -18,7 +18,7 @@ import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/create_note.dart';
 import 'package:note_taking_app/UI/create_task.dart';
 import 'package:note_taking_app/UI/group_details.dart';
-import 'package:note_taking_app/UI/note_task.dart';
+import 'package:note_taking_app/UI/list_screen.dart';
 
 class ClassTeamScreen extends StatefulWidget {
   final SelectionMode mode;
@@ -141,9 +141,6 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                   children: [
                     Text(
                       latestGroup.name,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyLarge!.copyWith(color: Colors.black),
                     ),
                     IconButton(
                       onPressed: () {

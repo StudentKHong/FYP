@@ -13,14 +13,15 @@ import 'package:note_taking_app/Controller/task_controller.dart';
 import 'package:note_taking_app/Controller/team_controller.dart';
 import 'package:note_taking_app/Model/Models/class_model.dart';
 import 'package:note_taking_app/Model/Models/entity_model.dart';
+import 'package:note_taking_app/Model/Models/enumeration.dart';
 import 'package:note_taking_app/Model/Models/group_model.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
 import 'package:note_taking_app/Model/Models/note_model.dart';
 import 'package:note_taking_app/Model/Models/task_model.dart';
 import 'package:note_taking_app/Model/Models/team_model.dart';
 import 'package:note_taking_app/UI/Navigation/named_routes.dart';
-import 'package:note_taking_app/UI/Navigation/ui_scaffold_state.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
+import 'package:note_taking_app/UI/SharedComponents/confirmation_message.dart';
 import 'package:note_taking_app/UI/SharedComponents/extended_card.dart';
 import 'package:note_taking_app/UI/SharedComponents/filter_popup.dart';
 import 'package:note_taking_app/UI/SharedComponents/loading_state.dart';
@@ -90,6 +91,8 @@ class ListScreen<T extends BaseEntity> extends StatefulWidget {
 
 class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
     with AutomaticKeepAliveClientMixin {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+
   final AuthenticationController authController =
       Get.find<AuthenticationController>();
   final RoleController roleController = Get.find<RoleController>();
@@ -189,28 +192,26 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
       widget.customFetchFunction!();
       return;
     }
-    // if (_controller is LabelController) {
-    //   if (widget.pageType == ListScreenType.noteLabels) {
-    //     (_controller as LabelController).getNoteLabels();
-    //   } else if (widget.pageType == ListScreenType.taskLabels) {
-    //     (_controller as LabelController).getTaskLabels();
-    //   }
-    // } else if (widget.pageType == ListScreenType.sharedNotes ||
-    //     widget.pageType == ListScreenType.sharedTasks) {
-    //   return;
-    // } else {
-    if (widget.pageType == ListScreenType.archivedNotes &&
-        _controller is NoteController) {
-      (_controller as NoteController).getArchived();
-    } else if (widget.pageType == ListScreenType.archivedTasks &&
-        _controller is TaskController) {
-      (_controller as TaskController).getArchived();
+    if (_controller is LabelController) {
+      if (widget.pageType == ListScreenType.noteLabels) {
+        (_controller as LabelController).getNoteLabels();
+      } else if (widget.pageType == ListScreenType.taskLabels) {
+        (_controller as LabelController).getTaskLabels();
+      }
+    } else if (widget.pageType == ListScreenType.sharedNotes ||
+        widget.pageType == ListScreenType.sharedTasks) {
+      return;
+    } else {
+      if (widget.pageType == ListScreenType.archivedNotes &&
+          _controller is NoteController) {
+        (_controller as NoteController).getArchived();
+      } else if (widget.pageType == ListScreenType.archivedTasks &&
+          _controller is TaskController) {
+        (_controller as TaskController).getArchived();
+      } else {
+        _controller.getAll();
+      }
     }
-    // else {
-    //   print("Running getAll() function.");
-    //   _controller.getAll();
-    // }
-    // }
   }
 
   VoidCallback? onTapCard(T item) {
@@ -326,6 +327,30 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
     });
   }
 
+  int _getActiveFilterCount() {
+    final filter = _controller.currentFilter.value;
+    if (filter == null) return 0;
+
+    int count = 0;
+
+    // Count the number of active filters.
+    // Each filter contributes to one counter.
+    if (filter.labelNames != null && filter.labelNames!.isNotEmpty) {
+      count += filter.labelNames!.length;
+    }
+
+    if (filter.dateCreated != null) count++;
+    if (filter.dateModified != null) count++;
+
+    if (filter is TaskFilter) {
+      final taskFilter = filter as TaskFilter;
+      if (taskFilter.status != null && taskFilter.status!.isNotEmpty) {
+        count += taskFilter.status!.length;
+      }
+    }
+    return count;
+  }
+
   List<IconButton> _buildIconButtons(T item) {
     final List<IconButton> iconButtons = [];
     if (item is Note || item is Task) {
@@ -365,20 +390,24 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
             widget.pageType != ListScreenType.sharedTasks)
           IconButton(
             onPressed: () async {
-              // final isPinned = (item as dynamic).isPinned;
-              // final isArchived = (item as dynamic).isArchived ?? false;
-              // final newItem = (item as dynamic).copyWith(isArchived: !isArchived, isPinned: !isArchived ? false : isPinned);
-
-              final index = _controller.filteredList.indexOf(item);
-              if (index != -1) {
-                _controller.filteredList.removeAt(index);
-                // sortList();
-              }
+              final wasArchived = (item as dynamic).isArchived ?? false;
 
               if (item is Note) {
                 await (_controller as NoteController).toggleArchiveStatus(item);
               } else if (item is Task) {
                 await (_controller as TaskController).toggleArchiveStatus(item);
+              }
+
+              if (wasArchived) {
+                CustomDialog.showInfo(
+                  "Unarchived",
+                  "Item has been restored to the main list.",
+                );
+              } else {
+                CustomDialog.showInfo(
+                  "Archived",
+                  "You can find the archived item in (Menu > Archived Tab).",
+                );
               }
             },
             icon: Icon(
@@ -503,6 +532,25 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
     });
   }
 
+  Future<void> _showUnsavedChangesDialog() async {
+    await buildConfirmationMessage(
+      context: context,
+      title: 'Unsaved changes. Do you wish to leave?',
+      buttonDetails: [
+        ButtonDetails(
+          text: "Yes",
+          buttonColor:
+              Theme.of(
+                context,
+              ).elevatedButtonTheme.style?.backgroundColor?.resolve({}) ??
+              Colors.black,
+          onTapOption: () async => Get.back(),
+        ),
+        ButtonDetails(text: "No", buttonColor: Colors.grey),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.keepAlive) super.build(context);
@@ -522,319 +570,390 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
               ),
             ),
           )
-        : Scaffold(
-            key: Get.find<UIScaffoldState>().scaffoldKey,
-            // Enable multi-deletion.
-            appBar: widget.showAppBar
-                ? _selectionMode != SelectionMode.none
-                      ? _selectionMode == SelectionMode.other
-                            ? CustomAppBar(
-                                titleText: widget.title,
-                                actions: [
-                                  IconButton(
-                                    onPressed: () => _selectedItems.isNotEmpty
-                                        ? Get.back(result: _selectedItems)
-                                        : CustomDialog.showError(
-                                            "Error",
-                                            "Please select an item(s) to proceed.",
-                                          ),
-                                    icon: Icon(Icons.check),
-                                  ),
-                                ],
-                                replaceDefaultActions: true,
-                              )
-                            : CustomAppBar(
-                                titleText: widget.title,
-                                actions: [
-                                  ...AdditionalOptions.buildDefaultOptions(
-                                    context: context,
-                                    controller: _controller,
-                                    notes:
-                                        _selectedItems
-                                            .whereType<Note>()
-                                            .toList()
-                                            .isNotEmpty
-                                        ? _selectedItems
+        : PopScope(
+            canPop: _selectionMode != SelectionMode.other,
+            onPopInvokedWithResult: (didPop, result) async {
+              if (didPop) return;
+              if (_selectionMode == SelectionMode.other) {
+                await _showUnsavedChangesDialog();
+              }
+            },
+            child: Scaffold(
+              key: _scaffoldKey,
+              // Enable multi-deletion.
+              appBar: widget.showAppBar
+                  ? _selectionMode != SelectionMode.none
+                        ? _selectionMode == SelectionMode.other
+                              ? CustomAppBar(
+                                  titleText: widget.title,
+                                  actions: [
+                                    IconButton(
+                                      onPressed: () => _selectedItems.isNotEmpty
+                                          ? Get.back(result: _selectedItems)
+                                          : CustomDialog.showError(
+                                              "Error",
+                                              "Please select an item(s) to proceed.",
+                                            ),
+                                      icon: Icon(Icons.check),
+                                    ),
+                                  ],
+                                  replaceDefaultActions: true,
+                                )
+                              : CustomAppBar(
+                                  titleText: widget.title,
+                                  actions: [
+                                    ...AdditionalOptions.buildDefaultOptions(
+                                      context: context,
+                                      controller: _controller,
+                                      notes:
+                                          _selectedItems
                                               .whereType<Note>()
                                               .toList()
-                                        : null,
-                                    tasks:
-                                        _selectedItems
-                                            .whereType<Task>()
-                                            .toList()
-                                            .isNotEmpty
-                                        ? _selectedItems
+                                              .isNotEmpty
+                                          ? _selectedItems
+                                                .whereType<Note>()
+                                                .toList()
+                                          : null,
+                                      tasks:
+                                          _selectedItems
                                               .whereType<Task>()
                                               .toList()
-                                        : null,
-                                    labels:
-                                        _selectedItems
-                                            .whereType<Label>()
-                                            .toList()
-                                            .isNotEmpty
-                                        ? _selectedItems
+                                              .isNotEmpty
+                                          ? _selectedItems
+                                                .whereType<Task>()
+                                                .toList()
+                                          : null,
+                                      labels:
+                                          _selectedItems
                                               .whereType<Label>()
                                               .toList()
-                                        : null,
-                                    onUpdate: (updatedItems) {
-                                      if (_controller is Controller<Note>) {
-                                        final List<Note> updatedNotes =
-                                            updatedItems
-                                                .whereType<Note>()
-                                                .toList();
-                                        (_controller as Controller<Note>).edit(
-                                          updatedNotes,
-                                        );
-                                      } else if (_controller
-                                          is Controller<Task>) {
-                                        final List<Task> updatedTasks =
-                                            updatedItems
-                                                .whereType<Task>()
-                                                .toList();
-                                        (_controller as Controller<Task>).edit(
-                                          updatedTasks,
-                                        );
-                                      } else if (_controller
-                                          is Controller<Label>) {
-                                        final List<Label> updatedLabels =
-                                            updatedItems
+                                              .isNotEmpty
+                                          ? _selectedItems
                                                 .whereType<Label>()
-                                                .toList();
-                                        (_controller as Controller<Label>).edit(
-                                          updatedLabels,
-                                        );
-                                      }
+                                                .toList()
+                                          : null,
+                                      onUpdate: (updatedItems) {
+                                        if (_controller is Controller<Note>) {
+                                          final List<Note> updatedNotes =
+                                              updatedItems
+                                                  .whereType<Note>()
+                                                  .toList();
+                                          (_controller as Controller<Note>)
+                                              .edit(updatedNotes);
+                                        } else if (_controller
+                                            is Controller<Task>) {
+                                          final List<Task> updatedTasks =
+                                              updatedItems
+                                                  .whereType<Task>()
+                                                  .toList();
+                                          (_controller as Controller<Task>)
+                                              .edit(updatedTasks);
+                                        } else if (_controller
+                                            is Controller<Label>) {
+                                          final List<Label> updatedLabels =
+                                              updatedItems
+                                                  .whereType<Label>()
+                                                  .toList();
+                                          (_controller as Controller<Label>)
+                                              .edit(updatedLabels);
+                                        }
 
-                                      setState(() {
-                                        _selectedItems.clear();
-                                        _selectionMode = SelectionMode.none;
-                                      });
-                                    },
-                                    onActionComplete: () {
-                                      setState(() {
-                                        _selectedItems.clear();
-                                        _selectionMode = SelectionMode.none;
-                                      });
-                                    },
-                                    isForShared:
-                                        widget.pageType ==
-                                            ListScreenType.sharedNotes ||
-                                        widget.pageType ==
-                                            ListScreenType.sharedTasks,
-                                    hidePin: true,
-                                    hideArchive: true,
-                                    hideShare:
-                                        widget.pageType ==
-                                                ListScreenType.noteLabels ||
-                                            widget.pageType ==
-                                                ListScreenType.taskLabels
-                                        ? true
-                                        : false,
-                                  ),
+                                        setState(() {
+                                          _selectedItems.clear();
+                                          _selectionMode = SelectionMode.none;
+                                        });
+                                      },
+                                      onActionComplete: () {
+                                        setState(() {
+                                          _selectedItems.clear();
+                                          _selectionMode = SelectionMode.none;
+                                        });
+                                      },
+                                      isForShared:
+                                          widget.pageType ==
+                                              ListScreenType.sharedNotes ||
+                                          widget.pageType ==
+                                              ListScreenType.sharedTasks,
+                                      hidePin: true,
+                                      hideArchive: true,
+                                      hideShare:
+                                          widget.pageType ==
+                                                  ListScreenType.noteLabels ||
+                                              widget.pageType ==
+                                                  ListScreenType.taskLabels
+                                          ? true
+                                          : false,
+                                    ),
+                                    IconButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _selectedItems.clear();
+                                          _selectionMode = SelectionMode.none;
+                                        });
+                                      },
+                                      icon: Icon(
+                                        Icons.close,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                  ],
+                                  replaceDefaultActions: true,
+                                )
+                        : CustomAppBar(titleText: widget.title)
+                  : null,
+              endDrawer: const HamburgerMenu(),
+              body: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                child: Column(
+                  children: [
+                    if (widget.description != null) ...[
+                      Text(widget.description!),
+                      const SizedBox(height: 16),
+                    ],
+                    CustomSearchBar(
+                      searchController: _searchController,
+                      onSearch: (value) => _controller.search(value),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            if (_controller is Controller<FilterableEntity>)
+                              Stack(
+                                children: [
                                   IconButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        _selectedItems.clear();
-                                        _selectionMode = SelectionMode.none;
-                                      });
+                                    onPressed: () async {
+                                      // Open a filter section at the bottom.
+                                      await showModalBottomSheet<
+                                        ComponentFilter<T>
+                                      >(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        builder: (_) => StatefulBuilder(
+                                          builder: (_, _) {
+                                            return FilterPopUp<
+                                              FilterableEntity
+                                            >(
+                                              controller:
+                                                  _controller
+                                                      as Controller<
+                                                        FilterableEntity
+                                                      >,
+                                              forComponentType:
+                                                  widget.pageType.name.contains(
+                                                    'note',
+                                                  )
+                                                  ? ComponentType.note
+                                                  : ComponentType.task,
+                                            );
+                                          },
+                                        ),
+                                      );
+                                      setState(() {});
                                     },
-                                    icon: Icon(Icons.close, color: Colors.red),
+                                    icon: Icon(
+                                      Icons.filter_alt,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimary,
+                                    ),
                                   ),
+                                  if (_getActiveFilterCount() > 0)
+                                    Positioned(
+                                      right: 4,
+                                      top: 4,
+                                      child: Container(
+                                        padding: EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        constraints: BoxConstraints(
+                                          minHeight: 15,
+                                          minWidth: 15,
+                                        ),
+                                        child: Text(
+                                          _getActiveFilterCount().toString(),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall!
+                                              .copyWith(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.surface,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ),
                                 ],
-                                replaceDefaultActions: true,
-                              )
-                      : CustomAppBar(titleText: widget.title)
-                : null,
-            endDrawer: const HamburgerMenu(),
-            body: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Column(
-                children: [
-                  if (widget.description != null) ...[
-                    Text(widget.description!),
-                    const SizedBox(height: 16),
-                  ],
-                  CustomSearchBar(
-                    searchController: _searchController,
-                    onSearch: (value) => _controller.search(value),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          if (_controller is Controller<FilterableEntity>)
+                              ),
                             IconButton(
                               onPressed: () async {
-                                // Open a filter section at the bottom.
-                                await showModalBottomSheet<ComponentFilter<T>>(
+                                await showModalBottomSheet<T>(
                                   context: context,
                                   isScrollControlled: true,
-                                  builder: (_) => FilterPopUp<FilterableEntity>(
-                                    controller:
-                                        _controller
-                                            as Controller<FilterableEntity>,
+                                  builder: (BuildContext context) => SafeArea(
+                                    child: SortPopUp<T>(
+                                      controller: _controller,
+                                    ),
                                   ),
                                 );
                               },
                               icon: Icon(
-                                Icons.filter_alt,
+                                Icons.sort,
                                 color: Theme.of(context).colorScheme.onPrimary,
                               ),
                             ),
-                          IconButton(
-                            onPressed: () async {
-                              await showModalBottomSheet<T>(
-                                context: context,
-                                isScrollControlled: true,
-                                builder: (BuildContext context) => SafeArea(
-                                  child: SortPopUp<T>(controller: _controller),
+                          ],
+                        ),
+                        _buildAddButton(),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _fetchData,
+                        child: Obx(() {
+                          final listToShow =
+                              ((widget.pageType == ListScreenType.noteLabels)
+                                      ? (_controller as LabelController)
+                                            .noteLabels
+                                      : (widget.pageType ==
+                                            ListScreenType.taskLabels)
+                                      ? (_controller as LabelController)
+                                            .taskLabels
+                                      : _controller.filteredList)
+                                  .cast<T>();
+
+                          if (_controller.isLoading.value &&
+                              listToShow.isEmpty) {
+                            return LoadingShimmer();
+                          }
+
+                          if (listToShow.isEmpty &&
+                              !_controller.isLoading.value) {
+                            return _buildEmptyState();
+                          }
+
+                          return ListView.builder(
+                            itemCount: listToShow.length,
+                            itemBuilder: (context, index) {
+                              final item = listToShow[index];
+
+                              final isFilterable = item is FilterableEntity;
+                              String dateCreated = '';
+                              if ((isFilterable &&
+                                      (item as FilterableEntity).dateCreated !=
+                                          null) ||
+                                  item is Team) {
+                                dateCreated = DateFormat.yMd().format(
+                                  item.dateCreated!,
+                                );
+                              }
+                              List<String> otherDetails = _getOtherDetails(
+                                item,
+                              );
+                              final onTap = _selectionMode != SelectionMode.none
+                                  ? () {
+                                      widget.onItemTap?.call(item);
+                                      _selectItem(item);
+                                    }
+                                  : onTapCard(item);
+
+                              // Build card-like widget to display details.
+                              final card = _buildCard(
+                                item: item,
+                                dateCreated: dateCreated,
+                                otherDetails: otherDetails,
+                                onTap: onTap,
+                                iconButtons: _buildIconButtons(item),
+                              );
+
+                              final isSelected = _selectedItems.contains(item);
+                              return AnimatedContainer(
+                                duration: Duration(milliseconds: 200),
+                                margin: EdgeInsets.symmetric(vertical: 6),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: isSelected
+                                      ? Border.all(
+                                          color: Theme.of(context).primaryColor,
+                                          width: 2,
+                                        )
+                                      : null,
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: _selectionMode != SelectionMode.none
+                                        ? () => _selectItem(item)
+                                        : null,
+                                    onLongPress:
+                                        _selectionMode == SelectionMode.none
+                                        ? () {
+                                            setState(() {
+                                              _selectionMode =
+                                                  SelectionMode.regular;
+                                              _selectedItems.add(item);
+                                            });
+                                          }
+                                        : null,
+                                    child: Stack(
+                                      children: [
+                                        card,
+                                        if (_selectionMode !=
+                                            SelectionMode.none)
+                                          Positioned(
+                                            top: 8,
+                                            right: 8,
+                                            child: Checkbox(
+                                              value: isSelected,
+                                              onChanged: (_) =>
+                                                  _selectItem(item),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    // ? ListTile(
+                                    //     subtitle: card,
+                                    //     onTap:
+                                    //         _selectionMode !=
+                                    //             SelectionMode.none
+                                    //         ? () => _selectItem(item)
+                                    //         : null,
+                                    //     trailing:
+                                    //         _selectionMode !=
+                                    //             SelectionMode.none
+                                    //         ? SizedBox(
+                                    //             width: 1,
+                                    //             child: Checkbox(
+                                    //               value: isSelected,
+                                    //               onChanged: (_) {
+                                    //                 _selectItem(item);
+                                    //               },
+                                    //             ),
+                                    //           )
+                                    //         : null,
+                                    //   )
+                                    // : card,
+                                  ),
                                 ),
                               );
                             },
-                            icon: Icon(
-                              Icons.sort,
-                              color: Theme.of(context).colorScheme.onPrimary,
-                            ),
-                          ),
-                        ],
+                          );
+                        }),
                       ),
-                      _buildAddButton(),
-                    ],
-                  ),
-
-                  const SizedBox(height: 10),
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: _fetchData,
-                      child: Obx(() {
-                        final listToShow =
-                            ((widget.pageType == ListScreenType.noteLabels)
-                                    ? (_controller as LabelController)
-                                          .noteLabels
-                                    : (widget.pageType ==
-                                          ListScreenType.taskLabels)
-                                    ? (_controller as LabelController)
-                                          .taskLabels
-                                    : _controller.filteredList)
-                                .cast<T>();
-
-                        if (_controller.isLoading.value && listToShow.isEmpty) {
-                          return LoadingShimmer();
-                        }
-
-                        if (listToShow.isEmpty &&
-                            !_controller.isLoading.value) {
-                          return _buildEmptyState();
-                        }
-
-                        return ListView.builder(
-                          itemCount: listToShow.length,
-                          itemBuilder: (context, index) {
-                            final item = listToShow[index];
-
-                            final isFilterable = item is FilterableEntity;
-                            String dateCreated = '';
-                            if ((isFilterable &&
-                                    (item as FilterableEntity).dateCreated !=
-                                        null) ||
-                                item is Team) {
-                              dateCreated = DateFormat.yMd().format(
-                                item.dateCreated!,
-                              );
-                            }
-                            List<String> otherDetails = _getOtherDetails(item);
-                            final onTap = _selectionMode != SelectionMode.none
-                                ? () {
-                                    widget.onItemTap?.call(item);
-                                    _selectItem(item);
-                                  }
-                                : onTapCard(item);
-
-                            // Build card-like widget to display details.
-                            final card = _buildCard(
-                              item: item,
-                              dateCreated: dateCreated,
-                              otherDetails: otherDetails,
-                              onTap: onTap,
-                              iconButtons: _buildIconButtons(item),
-                            );
-
-                            final isSelected = _selectedItems.contains(item);
-                            return AnimatedContainer(
-                              duration: Duration(milliseconds: 200),
-                              margin: EdgeInsets.symmetric(vertical: 6),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                border: isSelected
-                                    ? Border.all(
-                                        color: Theme.of(context).primaryColor,
-                                        width: 2,
-                                      )
-                                    : null,
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: _selectionMode != SelectionMode.none
-                                      ? () => _selectItem(item)
-                                      : null,
-                                  onLongPress:
-                                      _selectionMode == SelectionMode.none
-                                      ? () {
-                                          setState(() {
-                                            _selectionMode =
-                                                SelectionMode.regular;
-                                            _selectedItems.add(item);
-                                          });
-                                        }
-                                      : null,
-                                  child: Stack(
-                                    children: [
-                                      card,
-                                      if (_selectionMode != SelectionMode.none)
-                                        Positioned(
-                                          top: 8,
-                                          right: 8,
-                                          child: Checkbox(
-                                            value: isSelected,
-                                            onChanged: (_) => _selectItem(item),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  // ? ListTile(
-                                  //     subtitle: card,
-                                  //     onTap:
-                                  //         _selectionMode !=
-                                  //             SelectionMode.none
-                                  //         ? () => _selectItem(item)
-                                  //         : null,
-                                  //     trailing:
-                                  //         _selectionMode !=
-                                  //             SelectionMode.none
-                                  //         ? SizedBox(
-                                  //             width: 1,
-                                  //             child: Checkbox(
-                                  //               value: isSelected,
-                                  //               onChanged: (_) {
-                                  //                 _selectItem(item);
-                                  //               },
-                                  //             ),
-                                  //           )
-                                  //         : null,
-                                  //   )
-                                  // : card,
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      }),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
@@ -943,6 +1062,7 @@ class _AddButtonPopUpState extends State<AddButtonPopUp> {
                   labelText: "Code",
                   border: OutlineInputBorder(),
                 ),
+                style: TextStyle(color: Theme.of(context).colorScheme.surface),
                 maxLength: 5,
                 maxLines: 1,
                 controller: controller,
@@ -982,6 +1102,11 @@ class _AddButtonPopUpState extends State<AddButtonPopUp> {
         mainAxisSize: MainAxisSize.min,
         children: [
           TextButton(
+            style: ButtonStyle(
+              foregroundColor: WidgetStatePropertyAll(
+                Theme.of(context).colorScheme.surface,
+              ),
+            ),
             onPressed: () => localSetState(() {
               isJoinSelected = true;
             }),

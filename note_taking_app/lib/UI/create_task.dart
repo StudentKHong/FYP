@@ -11,7 +11,6 @@ import 'package:note_taking_app/Model/Models/enumeration.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
 import 'package:note_taking_app/Model/Models/notification_model.dart';
 import 'package:note_taking_app/Model/Models/task_model.dart';
-import 'package:note_taking_app/UI/Navigation/ui_scaffold_state.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
 import 'package:note_taking_app/UI/SharedComponents/confirmation_message.dart';
 import 'package:note_taking_app/UI/SharedComponents/info_button.dart';
@@ -60,6 +59,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   bool hasChanged = false;
   String lastGeneratedContent = '';
   bool hasGeneratedLabels = false;
+  bool isReminderWarningTriggered = false;
 
   late Task? original;
   Task? task;
@@ -524,6 +524,30 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final title = titleController.text.trim();
     final description = descriptionController.text.trim();
     if (hasChanged && (widget.mode != Mode.view)) {
+      // Alert user about the caveats of reminder.
+      if (selectedReminder != null) {
+        if (!isReminderWarningTriggered) {
+          if (selectedReminder!.contains("start") && startDateTime == null) {
+            CustomDialog.showInfo(
+              "Warning",
+              "Please select a start date to ensure reminder is active.",
+            );
+            setState(() {
+              isReminderWarningTriggered = true;
+            });
+            return;
+          } else if (selectedReminder!.contains("end") && endDateTime == null) {
+            CustomDialog.showInfo(
+              "Warning",
+              "Please select an end date to ensure reminder is active.",
+            );
+            setState(() {
+              isReminderWarningTriggered = true;
+            });
+            return;
+          }
+        }
+      }
       if (widget.mode == Mode.create || widget.mode == Mode.createShared) {
         await _createTask(
           title: title,
@@ -547,22 +571,37 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     }
   }
 
-  void _showUnsavedChangesDialog() {
+  void _showUnsavedChangesDialog({
+    bool canSave = true,
+    bool canDiscard = false,
+    bool canCancel = true,
+  }) {
     buildConfirmationMessage(
       context: context,
       title: 'Unsaved Changes. Would you like to save changes?',
-      onTapOption1: () async => await _saveChanges(
-        successAction: (_) async {
-          Get.back();
-          Get.find<UIScaffoldState>().openDrawer();
-        },
-      ),
-      buttonText1: "Save",
-      colorForButton1: Theme.of(
-        context,
-      ).elevatedButtonTheme.style?.backgroundColor?.resolve({}),
-      buttonText2: "Cancel",
-      colorForButton2: Colors.grey,
+      buttonDetails: [
+        if (canSave)
+          ButtonDetails(
+            text: "Save",
+            buttonColor:
+                Theme.of(
+                  context,
+                ).elevatedButtonTheme.style?.backgroundColor?.resolve({}) ??
+                Colors.black,
+            onTapOption: () async => await _saveChanges(
+              successAction: (task) async {
+                Get.back(result: task);
+              },
+            ),
+          ),
+        if (canDiscard)
+          ButtonDetails(
+            text: "Discard",
+            buttonColor: Colors.red,
+            onTapOption: () async => Get.back(),
+          ),
+        if (canCancel) ButtonDetails(text: "Cancel", buttonColor: Colors.grey),
+      ],
     );
   }
 
@@ -572,13 +611,28 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        await _saveChanges(successAction: (task) => Get.back(result: task));
-        Get.back();
+        if (hasChanged) {
+          _showUnsavedChangesDialog(canDiscard: true);
+        } else {
+          Get.back();
+        }
       },
       child: Scaffold(
         key: _scaffoldKey,
         appBar: CustomAppBar(
-          titleText: title,
+          titleWidget: Row(
+            children: [
+              Text(title),
+              CustomInfoButton(
+                infoDetails: [
+                  Info(
+                    text:
+                        "To save changes, select the back button to apply changes.",
+                  ),
+                ],
+              ),
+            ],
+          ),
           actions:
               (task != null &&
                   (widget.mode == Mode.edit || widget.mode == Mode.editShared))

@@ -4,16 +4,15 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/base_controller.dart';
 import 'package:note_taking_app/Model/Models/attachment_model.dart';
-import 'package:note_taking_app/Model/Models/enumeration.dart';
 import 'package:note_taking_app/Model/Repository/attachment_repository.dart';
 
 class AttachmentController extends Controller<Attachment> {
   late final AttachmentRepository _attachmentRepository;
 
-  var temporaryList = <AttachmentComponent>[].obs;
-  var attachmentComponents = <AttachmentComponent>[].obs;
+  var temporaryList = <ResolvedAttachment>[].obs;
+  var resolvedAttachments = <ResolvedAttachment>[].obs;
 
-  StreamSubscription<List<AttachmentComponent>>? _attachmentSubscription;
+  StreamSubscription<List<ResolvedAttachment>>? _attachmentSubscription;
 
   AttachmentController({required String componentId})
     : super(
@@ -34,15 +33,23 @@ class AttachmentController extends Controller<Attachment> {
   }
 
   void getList() {
+    isLoading.value = true;
     errorMessage.value = "";
     _attachmentSubscription?.cancel();
-    _attachmentSubscription = _attachmentRepository.getList().listen((data) {
-      attachmentComponents.assignAll(data);
-    }, onError: (ex) => errorMessage.value = ex.toString());
+    _attachmentSubscription = _attachmentRepository.getList().listen(
+      (data) {
+        resolvedAttachments.assignAll(data);
+        isLoading.value = false;
+      },
+      onError: (ex) {
+        errorMessage.value = ex.toString();
+        isLoading.value = false;
+      },
+    );
   }
 
-  void createTemporary(List<AttachmentComponent> attachmentComponents) {
-    temporaryList.assignAll(attachmentComponents);
+  void createTemporary(List<ResolvedAttachment> resolvedAttachments) {
+    temporaryList.assignAll(resolvedAttachments);
     totalCount.value += 1;
   }
 
@@ -51,16 +58,16 @@ class AttachmentController extends Controller<Attachment> {
       isLoading.value = true;
       errorMessage.value = "";
       final attachments = temporaryList
-          .where((component) => component.id != null)
+          .where((component) => component.attachmentComponent.id != null)
           .map((component) {
-            final attachmentType =
-                component.runtimeType.toString().toLowerCase() == "note"
-                ? ComponentType.note
-                : ComponentType.task;
+            // final attachmentType =
+            //     component.runtimeType.toString().toLowerCase() == "note"
+            //     ? ComponentType.note
+            //     : ComponentType.task;
             return Attachment(
               id: UniqueKey().toString(),
-              attachmentType: attachmentType,
-              attachmentId: component.id!,
+              attachmentType: component.attachment.attachmentType,
+              attachmentId: component.attachmentComponent.id!,
             );
           })
           .toList();

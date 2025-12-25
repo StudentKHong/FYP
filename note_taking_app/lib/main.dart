@@ -24,7 +24,6 @@ import 'package:note_taking_app/Model/Repository/team_repository.dart';
 import 'package:note_taking_app/Service/conectivity_service.dart';
 import 'package:note_taking_app/Service/upload_image_service.dart';
 import 'package:note_taking_app/UI/Navigation/named_routes.dart';
-import 'package:note_taking_app/UI/Navigation/ui_scaffold_state.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_theme.dart';
 import 'package:note_taking_app/UI/create_note.dart';
 import 'package:note_taking_app/UI/create_task.dart';
@@ -58,7 +57,7 @@ void main() async {
 
   // Initialize notification settings.
   const AndroidInitializationSettings androidInitializationSettings =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
+      AndroidInitializationSettings('ic_launcher');
   DarwinInitializationSettings iosInitializationSettings =
       DarwinInitializationSettings(
         requestAlertPermission: true,
@@ -102,9 +101,6 @@ void main() async {
   runApp(
     ToastificationWrapper(
       child: GetMaterialApp(
-        initialBinding: BindingsBuilder(() {
-          Get.put(UIScaffoldState());
-        }),
         title: 'Note Taking App',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,

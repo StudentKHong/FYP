@@ -125,31 +125,6 @@ class Task implements AttachmentComponent, FilterableEntity {
     return map;
   }
 
-  // Map<String, dynamic> toUpdateMap({
-  //   String? title,
-  //   String? description,
-  //   DateTime? startDateTime,
-  //   DateTime? endDateTime,
-  //   DateTime? reminderDateTime,
-  //   Status? status,
-  //   bool? isPinned,
-  //   bool? isArchived,
-  //   String? labelId,
-  // }) {
-  //   return {
-  //     'id': id,
-  //     if (title != null) 'title': title,
-  //     if (description != null) 'description': description,
-  //     if (startDateTime != null) 'startDateTime': startDateTime,
-  //     if (endDateTime != null) 'endDateTime': endDateTime,
-  //     if (endDateTime != null) 'reminderDateTime': reminderDateTime,
-  //     if (isPinned != null) 'isPinned': isPinned,
-  //     if (isArchived != null) 'isArchived': isArchived,
-  //     if (labelId != null) 'labelId': labelId,
-  //     'updatedAt': DateTime.now(),
-  //   };
-  // }
-
   Task copyWith({
     String? id,
     String? title,
