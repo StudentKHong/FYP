@@ -47,6 +47,7 @@ class CustomDropDownBox extends StatelessWidget {
                 child: Text(
                   item,
                   style: Theme.of(context).textTheme.bodyMedium,
+                  overflow: TextOverflow.visible,
                 ),
               ),
             )
@@ -67,6 +68,7 @@ class CustomDropDownBox extends StatelessWidget {
         ),
         dropdownStyleData: DropdownStyleData(
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
+          width: 150
         ),
       ),
     ];

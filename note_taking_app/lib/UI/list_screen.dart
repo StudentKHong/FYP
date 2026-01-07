@@ -5,7 +5,7 @@
 // Student ID     : TP069007
 // Course         : Bachelor of Software Engineering (Hons) 
 // Created Date   : 16 December 2025
-// Last Modified  : 26 December 2025
+// Last Modified  : 7 January 2026
 // ==================================================
 
 import 'dart:async';
@@ -160,17 +160,11 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
         break;
       case ListScreenType.classes:
         icon = Icons.class_outlined;
-        message = 'No classes yet.';
-        actionText =
-            'Join ${roleController.hasPermission(PermissionType.createClass) ? 'Or Create' : ''} a class.';
-        action = widget.onAddTap;
+        message = 'No classes yet. Join ${roleController.hasPermission(PermissionType.createClass) ? 'Or Create' : ''} a class.';
         break;
       case ListScreenType.teams:
         icon = Icons.group_add_outlined;
-        message = 'No classes yet.';
-        actionText =
-            'Join ${roleController.hasPermission(PermissionType.createClass) ? 'or create' : ''} a class.';
-        action = widget.onAddTap;
+        message = 'No classes yet. Join ${roleController.hasPermission(PermissionType.createClass) ? 'Or Create' : ''} a team.';
         break;
       case ListScreenType.noteLabels || ListScreenType.taskLabels:
         icon = Icons.group_add_outlined;

@@ -5,7 +5,7 @@
 // Student ID     : TP069007
 // Course         : Bachelor of Software Engineering (Hons) 
 // Created Date   : 16 December 2025
-// Last Modified  : 24 December 2025
+// Last Modified  : 7 January 2026
 // ==================================================
 
 import 'package:flutter/material.dart';
@@ -39,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _requestNotificationPermission();
+    _loadData();
   }
 
   Future<void> _loadData() async {

@@ -58,34 +58,6 @@ class TaskRepository extends UserRepository<Task> {
                 ? note.copyWith(label: labelsMap[labelId])
                 : note;
           }).toList();
-          // // Check and obtain current user uid.
-          // if (authController.user == null) {
-          //   return <Task>[];
-          // }
-          // final uid = authController.user.value!.uid;
-
-          // List<Task> list = [];
-
-          // for (final document in snapshot.docs) {
-          //   // Fetch task details, including labelId.
-          //   Task data = fromFirestore(document);
-
-          //   // Fetch label details using labelId.
-          //   final labelId = data.label?.id;
-          //   if (labelId != null) {
-          //     final labelDocumentSnapshot = await Repository.baseDocument(
-          //       uid,
-          //     ).collection('labels').doc(labelId).get();
-
-          //     if (labelDocumentSnapshot.exists) {
-          //       final label = Label.fromFirestore(labelDocumentSnapshot);
-          //       data = data.copyWith(label: label);
-          //     }
-          //   }
-          //   list.add(data);
-          // }
-
-          // return list;
         });
   }
 

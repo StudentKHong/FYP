@@ -117,7 +117,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 ),
                 CustomDropDownBox(
                   title: 'Role',
-                  titleColor: Theme.of(context).colorScheme.surface,
+                  titleColor: Theme.of(context).colorScheme.onSurface,
                   items: ['None', 'Student', 'Teacher', 'Worker'],
                   selectedValue: selectedItem.first,
                   onChanged: (value) {

@@ -1,5 +1,3 @@
-import 'dart:math';
-
 // ==================================================
 // Program Name   : team_repository.dart
 // Purpose        : Repository for team persistence and queries
@@ -9,6 +7,8 @@ import 'dart:math';
 // Created Date   : 16 December 2025
 // Last Modified  : 21 December 2025
 // ==================================================
+
+import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -170,39 +170,4 @@ class TeamRepository extends BaseRepository<Team> {
       memberDocumentReference.setOfflineSafe({"total": FieldValue.increment(-1)});
     }
   }
-
-  // Future<Map<String, dynamic>> fetchNotesAndTasks(String teamId) async {
-  //   final sharedNotesCollection = FirebaseFirestore.instance.collection(
-  //     'shared_notes',
-  //   );
-  //   final sharedTasksCollection = FirebaseFirestore.instance.collection(
-  //     'shared_tasks',
-  //   );
-
-  //   final snQuerySnapshot = await sharedNotesCollection
-  //       .where('groupType', isEqualTo: 'team')
-  //       .where('groupId', isEqualTo: teamId)
-  //       .get();
-  //   final stQuerySnapshot = await sharedTasksCollection
-  //       .where('groupType', isEqualTo: 'team')
-  //       .where('groupId', isEqualTo: teamId)
-  //       .get();
-
-  //   final List<Note> notesInTeam = [];
-  //   for (var document in snQuerySnapshot.docs) {
-  //     final note = Note.fromFirestore(document);
-  //     notesInTeam.add(note);
-  //   }
-
-  //   final List<Task> tasksInTeam = [];
-  //   for (var document in stQuerySnapshot.docs) {
-  //     final task = Task.fromFirestore(document);
-  //     tasksInTeam.add(task);
-  //   }
-
-  //   return {
-  //     "notes": notesInTeam,
-  //     "tasks": tasksInTeam
-  //   };
-  // }
 }

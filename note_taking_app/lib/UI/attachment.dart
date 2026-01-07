@@ -406,10 +406,5 @@ class AttachmentScreen {
       },
     );
     return dialog;
-
-    // return dialog.then((result) {
-    //   Get.delete<AttachmentController>(tag: componentId);
-    //   return result;
-    // });
   }
 }
