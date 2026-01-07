@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : upload_image_service.dart
+// Purpose        : Handles image upload queueing and replacement in notes
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 24 December 2025
+// ==================================================
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -69,7 +79,9 @@ class UploadImageService extends GetxService {
       if (await file.exists()) {
         final jsonString = await file.readAsString();
         final List list = jsonDecode(jsonString);
-        _deletionQueue.assignAll(list.map((item) => Map<String, dynamic>.from(item)));
+        _deletionQueue.assignAll(
+          list.map((item) => Map<String, dynamic>.from(item)),
+        );
       }
     } catch (ex) {
       CustomDialog.showError("Error", ex.toString());
@@ -137,7 +149,7 @@ class UploadImageService extends GetxService {
               final storageReference = FirebaseStorage.instance
                   .ref()
                   .child('note_images')
-                  .child('${DateTime.now().millisecondsSinceEpoch}_$fileName}');
+                  .child('${DateTime.now().millisecondsSinceEpoch}_$fileName');
               await storageReference.putFile(file);
               final downloadUrl = await storageReference.getDownloadURL();
 
@@ -170,9 +182,12 @@ class UploadImageService extends GetxService {
   }) async {
     // Retrieve note to update its image.
     final authController = Get.find<AuthenticationController>();
+    final user = authController.user.value;
+    if (user == null) return;
+
     final documentSnapshot = await FirebaseFirestore.instance
         .collection('users')
-        .doc(authController.user.value!.uid)
+        .doc(user.uid)
         .collection('notes')
         .doc(noteId)
         .get();
@@ -181,6 +196,8 @@ class UploadImageService extends GetxService {
     final note = Note.fromFirestore(documentSnapshot);
 
     // Extract data from delta.
+    if (note.content == null || note.content!.isEmpty) return;
+    
     final currentDeltaJson = jsonDecode(note.content!);
     final currentDelta = Delta.fromJson(currentDeltaJson);
 
@@ -195,10 +212,42 @@ class UploadImageService extends GetxService {
     final newOperations = <Operation>[];
     for (final operation in currentDelta.operations) {
       if (operation.isInsert && operation.data is Map) {
-        if ((operation.data as Map)["image"] == currentPath) {
-          (operation.data as Map)["image"] = downloadUrl;
-          newOperations.add(Operation.insert(operation.data));
+        final map = operation.data as Map;
+        
+        if (map.containsKey('custom')) {
+          try {
+            final customData = jsonDecode(map['custom']);
+          if (customData is Map && customData.containsKey('image')) {
+            final imageJson = customData['image'];
+            final imageData = jsonDecode(imageJson);
+            
+            if (imageData is Map && imageData['source'] == currentPath) {
+              // Update the source to the download URL
+              imageData['source'] = downloadUrl;
+              customData['image'] = jsonEncode(imageData);
+              map['custom'] = jsonEncode(customData);
+              newOperations.add(Operation.insert(map));
+              hasChanged = true;
+            } else {
+              newOperations.add(operation);
+            }
+          } else {
+            newOperations.add(operation);
+          }
+        } catch (_) {
+          newOperations.add(operation);
+        }
+      }
+      // Handle standard image embed
+      else if (map.containsKey('image')) {
+        final imageData = map['image'];
+        if (imageData == currentPath) {
+          map['image'] = downloadUrl;
+          newOperations.add(Operation.insert(map));
           hasChanged = true;
+        } else {
+          newOperations.add(operation);
+        }
         } else {
           newOperations.add(operation);
         }
@@ -219,7 +268,27 @@ class UploadImageService extends GetxService {
     final images = <String>[];
     for (var operation in delta.toList()) {
       final data = operation.data;
-      if (data is Map && data.containsKey('image')) images.add(data['image']);
+      if (data is Map && data.containsKey('custom')) {
+        try {
+          final customJson = jsonDecode(data['custom']);
+          if (customJson is Map && customJson.containsKey('image')) {
+            final imageJson = customJson['image'];
+            final imageData = jsonDecode(imageJson);
+            if (imageData is Map && imageData.containsKey('source')) {
+              images.add(imageData['source']);
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (data is Map && data.containsKey('image')) {
+        final imageData = data['image'];
+        if (imageData is String) {
+          images.add(imageData);
+        } else if (imageData is Map && imageData.containsKey('source')) {
+          images.add(imageData['source']);
+        }
+      }
     }
     return images;
   }
@@ -229,7 +298,10 @@ class UploadImageService extends GetxService {
     String? oldContentJson,
     required String currentContentJson,
   }) async {
-    final oldDeltaJson = jsonDecode(oldContentJson ?? note.content ?? "");
+    final source = oldContentJson ?? note.content;
+    if (source == null || source.isEmpty) return;
+
+    final oldDeltaJson = jsonDecode(source);
     final oldDelta = Delta.fromJson(oldDeltaJson);
     final oldImages = _extractImagesFromDelta(oldDelta);
 

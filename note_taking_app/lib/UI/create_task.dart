@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : create_task.dart
+// Purpose        : UI for creating, editing and viewing tasks
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'package:device_calendar/device_calendar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -483,7 +493,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     required String description,
     required Function(Task? task) successAction,
   }) async {
-    final isShared = widget.mode == Mode.createShared;
+    final isShared = widget.mode == Mode.editShared;
     task = task!.copyWith(
       title: title,
       description: description,
@@ -620,42 +630,60 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       child: Scaffold(
         key: _scaffoldKey,
         appBar: CustomAppBar(
-          titleWidget: Row(
-            children: [
-              Text(title),
-              CustomInfoButton(
-                infoDetails: [
-                  Info(
-                    text:
-                        "To save changes, select the back button to apply changes.",
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions:
-              (task != null &&
-                  (widget.mode == Mode.edit || widget.mode == Mode.editShared))
-              ? AdditionalOptions.buildDefaultOptions(
-                  context: context,
-                  controller: taskController,
-                  descriptionController: descriptionController,
-                  titleController: titleController,
-                  tasks: [task!],
-                  isForShared: widget.mode == Mode.editShared,
-                  onUpdate: (updatedTasks) {
-                    final list = updatedTasks
-                        .map((item) => item as Task)
-                        .toList();
-                    if (list.length == 1) {
-                      setState(() {
-                        task = list.first;
-                        hasChanged = true;
-                      });
-                    }
-                  },
+          titleText: widget.mode == Mode.view ? title : null,
+          titleWidget: widget.mode != Mode.view
+              ? Row(
+                  children: [
+                    Text(title),
+                    CustomInfoButton(
+                      infoDetails: [
+                        Info(
+                          text:
+                              "To save changes, select the back button to apply changes.",
+                        ),
+                      ],
+                    ),
+                  ],
                 )
-              : [],
+              : null,
+          actions: [
+            if (widget.mode != Mode.view)
+              IconButton(
+                onPressed: () async {
+                  if (hasChanged) {
+                    await _saveChanges(
+                      successAction: (task) {
+                        Get.back(result: task);
+                      },
+                    );
+                  } else {
+                    CustomDialog.showInfo("Info", "Task is up to date.");
+                  }
+                },
+                icon: Icon(Icons.save),
+              ),
+            if (task != null &&
+                (widget.mode == Mode.edit || widget.mode == Mode.editShared))
+              ...AdditionalOptions.buildDefaultOptions(
+                context: context,
+                controller: taskController,
+                descriptionController: descriptionController,
+                titleController: titleController,
+                tasks: [task!],
+                isForShared: widget.mode == Mode.editShared,
+                onUpdate: (updatedTasks) {
+                  final list = updatedTasks
+                      .map((item) => item as Task)
+                      .toList();
+                  if (list.length == 1) {
+                    setState(() {
+                      task = list.first;
+                      hasChanged = true;
+                    });
+                  }
+                },
+              ),
+          ],
           replaceDefaultActions: false,
           onMenuTap: () {
             if (hasChanged) {
@@ -878,12 +906,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                   padding: EdgeInsets.symmetric(horizontal: 3),
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10),
-                                    color: Colors.grey.shade800,
+                                    color: Colors.grey.shade600,
                                   ),
                                   child: DropdownButton<String>(
                                     style: Theme.of(
                                       context,
-                                    ).textTheme.bodyMedium,
+                                    ).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onPrimary),
                                     value: selectedReminder ?? 'None',
                                     items: _getReminderOptions(),
                                     onChanged: notificationsEnabled
@@ -934,10 +962,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             padding: EdgeInsets.symmetric(horizontal: 3),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(10),
-                              color: Colors.grey.shade800,
+                              color: Colors.grey.shade600,
                             ),
                             child: DropdownButton<Status>(
-                              style: Theme.of(context).textTheme.bodyMedium,
+                              style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onPrimary),
                               value: status,
                               items: _getStatusOptions(),
                               onChanged: widget.mode == Mode.view

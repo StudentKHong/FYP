@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : class_controller.dart
+// Purpose        : Manages class entities and related operations
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 23 December 2025
+// ==================================================
+
 import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/auth_controller.dart';
 import 'package:note_taking_app/Controller/base_controller.dart';
@@ -45,8 +55,8 @@ class ClassController extends Controller<Class> {
       errorMessage.value = "";
       _authenticationController.checkAuthentication();
 
-      final data = await _classRepository.join(code);
-      if (list.any((item) => item.id == data.id)) {
+      final (data, alreadyJoined) = await _classRepository.join(code);
+      if (alreadyJoined) {
         CustomDialog.showInfo("Info", "You are already in the class.");
         return data;
       }

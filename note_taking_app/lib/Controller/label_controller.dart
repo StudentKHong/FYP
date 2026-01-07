@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : label_controller.dart
+// Purpose        : Manages labels/tags and their persistence
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 24 December 2025
+// ==================================================
+
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -152,25 +162,20 @@ class LabelController extends Controller<Label> {
       isLoading.value = true;
       errorMessage.value = "";
 
-      print("4. text.isEmpty: ${text.isEmpty}");
       if (text.isEmpty) return;
-      print("5. _lastGeneratedContent.value == text: ${_lastGeneratedContent.value == text}");
+
       if (_lastGeneratedContent.value == text) return;
       final labelRepository = super.repository as LabelRepository;
       final existingLabels = forType == ComponentType.note
           ? noteLabels
           : taskLabels;
       final labelNames = existingLabels.map((label) => label.name).toList();
-      print("Existing Label Names: $labelNames");
       final moreLabelsToConsider = _defineDefaultLabels();
-      print("More Label Names: $moreLabelsToConsider");
       final compiledList = [...labelNames, ...moreLabelsToConsider];
       final suggestedLabelNames = await labelRepository.generateLabel(
         text,
         compiledList,
       );
-      print("Text: $text");
-      print("Label Names: $suggestedLabelNames");
       _lastGeneratedContent.value = text;
 
       // Check if label already exists.

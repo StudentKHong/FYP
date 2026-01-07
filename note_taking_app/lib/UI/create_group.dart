@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : create_group.dart
+// Purpose        : UI to create or edit user groups/classes
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 21 December 2025
+// ==================================================
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';

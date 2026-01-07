@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : toggle_button.dart
+// Purpose        : Toggle button component used in various editors
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 23 December 2025
+// ==================================================
+
 import 'package:flutter/material.dart';
 import 'package:note_taking_app/UI/SharedComponents/info_button.dart';
 

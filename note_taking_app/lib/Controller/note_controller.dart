@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : note_controller.dart
+// Purpose        : Manages note-related state, CRUD and sync logic
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'dart:async';
 
 import 'package:get/get.dart';

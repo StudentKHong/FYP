@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : share_feature.dart
+// Purpose        : UI helper to share notes/tasks with others
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'dart:io';
 import 'dart:ui';
 

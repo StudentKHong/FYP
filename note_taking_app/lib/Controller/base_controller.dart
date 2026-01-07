@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : base_controller.dart
+// Purpose        : Common controller base class with shared helpers
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';

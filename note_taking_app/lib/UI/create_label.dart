@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : create_label.dart
+// Purpose        : UI to create and manage labels/tags
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/base_controller.dart';
@@ -172,29 +182,6 @@ class _CreateLabelScreenState<T extends BaseEntity>
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () async {
-                      print("Created Label: $createdLabel");
-                      // if (!verifyLabel()) return;
-
-                      // final createdLabel = await labelController.create(
-                      //   Label(
-                      //     id: UniqueKey().toString(),
-                      //     name: textEditingController.text,
-                      //     type: widget.forComponentType,
-                      //     count: 0,
-                      //   ),
-                      // );
-                      // if (labelController.errorMessage.value.isNotEmpty) {
-                      //   CustomDialog.showError(
-                      //     "Error",
-                      //     labelController.errorMessage.value,
-                      //   );
-                      // } else {
-                      //   CustomDialog.showSuccess(
-                      //     "Success",
-                      //     "Successfully create label.",
-                      //   );
-                      // }
-
                       isForNotes
                           ? Get.to(
                               NoteDetailScreen(

@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : settings.dart
+// Purpose        : Settings screen UI
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 23 December 2025
+// ==================================================
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
@@ -19,7 +29,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final SettingController settingController = Get.find<SettingController>();
   final reminderSettings = NotificationController.options.keys.toList();
-  // late String selectedReminder;
 
   @override
   void initState() {
@@ -31,7 +40,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         CustomDialog.showError("Error", settingController.errorMessage.value);
       }
     });
-    // selectedReminder = settingController.getReminderOption();
   }
 
   Future<void> _fetchData() async {
@@ -55,7 +63,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Text(
                 title,
                 style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                  color: Theme.of(context).colorScheme.surface,
+                  color: Colors.black,
                   fontWeight: FontWeight.bold
                 ),
               ),

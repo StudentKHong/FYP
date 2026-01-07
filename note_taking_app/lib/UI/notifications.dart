@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : notifications.dart
+// Purpose        : Notifications screen UI
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 24 December 2025
+// ==================================================
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/notification_controller.dart';
@@ -18,10 +28,7 @@ class NotificationsScreen extends StatelessWidget {
         titleWidget: Row(
           children: [
             Text(
-              "Notifications",
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium!.copyWith(color: Colors.black),
+              "Notifications"
             ),
             CustomInfoButton(
               infoDetails: [

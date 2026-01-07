@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : register.dart
+// Purpose        : Registration screen UI
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 24 December 2025
+// ==================================================
+
 import 'package:email_validator/email_validator.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -79,18 +89,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             padding: const EdgeInsets.all(15),
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.book),
-                    const SizedBox(width: 10),
-                    Text(
-                      widget.isForExistingAccount
-                          ? 'Upgrade Account'
-                          : 'Create Account',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                  ],
+                Text(
+                  widget.isForExistingAccount
+                      ? 'Upgrade Account'
+                      : 'Create Account',
+                  style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: 10),
                 if (widget.isForExistingAccount) ...[
@@ -114,6 +117,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 ),
                 CustomDropDownBox(
                   title: 'Role',
+                  titleColor: Theme.of(context).colorScheme.surface,
                   items: ['None', 'Student', 'Teacher', 'Worker'],
                   selectedValue: selectedItem.first,
                   onChanged: (value) {
@@ -171,7 +175,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           );
                         }
 
-                        if (authController.errorMessage != null && authController.errorMessage!.isNotEmpty) {
+                        if (authController.errorMessage != null &&
+                            authController.errorMessage!.isNotEmpty) {
                           CustomDialog.showError(
                             'Register Failed',
                             authController.errorMessage!,
@@ -191,7 +196,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.grey.shade400)),
+                    style: ButtonStyle(
+                      backgroundColor: WidgetStatePropertyAll(
+                        Colors.grey.shade400,
+                      ),
+                    ),
                     onPressed: () => Get.offAllNamed(Routes.login),
                     child: Text('Cancel'),
                   ),

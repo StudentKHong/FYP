@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : list_screen.dart
+// Purpose        : Generic list UI for notes/tasks and search results
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -61,8 +71,9 @@ class ListScreen<T extends BaseEntity> extends StatefulWidget {
   final SelectionMode initialSelectionMode;
   final List<T>? preSelectedItems;
   final VoidCallback? onAddTap;
+  final Widget? customAddButton;
   final void Function(T item)? onItemTap;
-  final Function(SelectionMode mode)? onSelectionModeChanged;
+  final Function(SelectionMode mode, T selectedItem)? onSelectionModeChanged;
   final Function(List<dynamic> selected)? onSelectionChanged;
   final bool keepAlive;
 
@@ -79,6 +90,7 @@ class ListScreen<T extends BaseEntity> extends StatefulWidget {
     this.initialSelectionMode = SelectionMode.none,
     this.preSelectedItems,
     this.onAddTap,
+    this.customAddButton,
     this.onItemTap,
     this.onSelectionModeChanged,
     this.onSelectionChanged,
@@ -117,12 +129,6 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
   @override
   void didUpdateWidget(covariant ListScreen<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-
-    // if (!listEquals(widget.preSelectedItems, oldWidget.preSelectedItems)) {
-    //   setState(() {
-    //     _selectedItems = List.from(widget.preSelectedItems ?? []);
-    //   });
-    // }
     if (widget.initialSelectionMode != oldWidget.initialSelectionMode) {
       setState(() {
         _selectionMode = widget.initialSelectionMode;
@@ -186,8 +192,6 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
   }
 
   Future<void> _fetchData() async {
-    // authController.checkAuthentication();
-
     if (widget.customFetchFunction != null) {
       widget.customFetchFunction!();
       return;
@@ -483,6 +487,8 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
                 color: Theme.of(context).colorScheme.onPrimary,
               ),
             )
+          : widget.customAddButton != null
+          ? widget.customAddButton!
           : const SizedBox.shrink();
     }
     return SizedBox.shrink();
@@ -707,252 +713,272 @@ class _ListScreenState<T extends BaseEntity> extends State<ListScreen<T>>
                   horizontal: 16,
                   vertical: 10,
                 ),
-                child: Column(
-                  children: [
-                    if (widget.description != null) ...[
-                      Text(widget.description!),
-                      const SizedBox(height: 16),
-                    ],
-                    CustomSearchBar(
-                      searchController: _searchController,
-                      onSearch: (value) => _controller.search(value),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            if (_controller is Controller<FilterableEntity>)
-                              Stack(
-                                children: [
-                                  IconButton(
-                                    onPressed: () async {
-                                      // Open a filter section at the bottom.
-                                      await showModalBottomSheet<
-                                        ComponentFilter<T>
-                                      >(
-                                        context: context,
-                                        isScrollControlled: true,
-                                        builder: (_) => StatefulBuilder(
-                                          builder: (_, _) {
-                                            return FilterPopUp<
-                                              FilterableEntity
-                                            >(
-                                              controller:
-                                                  _controller
-                                                      as Controller<
-                                                        FilterableEntity
-                                                      >,
-                                              forComponentType:
-                                                  widget.pageType.name.contains(
-                                                    'note',
-                                                  )
-                                                  ? ComponentType.note
-                                                  : ComponentType.task,
-                                            );
-                                          },
-                                        ),
-                                      );
-                                      setState(() {});
-                                    },
-                                    icon: Icon(
-                                      Icons.filter_alt,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onPrimary,
-                                    ),
-                                  ),
-                                  if (_getActiveFilterCount() > 0)
-                                    Positioned(
-                                      right: 4,
-                                      top: 4,
-                                      child: Container(
-                                        padding: EdgeInsets.all(2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        constraints: BoxConstraints(
-                                          minHeight: 15,
-                                          minWidth: 15,
-                                        ),
-                                        child: Text(
-                                          _getActiveFilterCount().toString(),
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall!
-                                              .copyWith(
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.surface,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                          textAlign: TextAlign.center,
-                                        ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      if (widget.description != null) ...[
+                        Text(widget.description!),
+                        const SizedBox(height: 16),
+                      ],
+                      CustomSearchBar(
+                        searchController: _searchController,
+                        onSearch: (value) => _controller.search(value),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              if (_controller is Controller<FilterableEntity>)
+                                Stack(
+                                  children: [
+                                    IconButton(
+                                      onPressed: () async {
+                                        // Open a filter section at the bottom.
+                                        await showModalBottomSheet<
+                                          ComponentFilter<T>
+                                        >(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          builder: (_) => StatefulBuilder(
+                                            builder: (_, _) {
+                                              return FilterPopUp<
+                                                FilterableEntity
+                                              >(
+                                                controller:
+                                                    _controller
+                                                        as Controller<
+                                                          FilterableEntity
+                                                        >,
+                                                forComponentType:
+                                                    widget.pageType.name
+                                                        .contains('note')
+                                                    ? ComponentType.note
+                                                    : ComponentType.task,
+                                              );
+                                            },
+                                          ),
+                                        );
+                                        setState(() {});
+                                      },
+                                      icon: Icon(
+                                        Icons.filter_alt,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimary,
                                       ),
                                     ),
-                                ],
+                                    if (_getActiveFilterCount() > 0)
+                                      Positioned(
+                                        right: 4,
+                                        top: 4,
+                                        child: Container(
+                                          padding: EdgeInsets.all(2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          constraints: BoxConstraints(
+                                            minHeight: 15,
+                                            minWidth: 15,
+                                          ),
+                                          child: Text(
+                                            _getActiveFilterCount().toString(),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall!
+                                                .copyWith(
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.surface,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              IconButton(
+                                onPressed: () async {
+                                  await showModalBottomSheet<T>(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    builder: (BuildContext context) => SafeArea(
+                                      child: SortPopUp<T>(
+                                        controller: _controller,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: Icon(
+                                  Icons.sort,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                ),
                               ),
-                            IconButton(
-                              onPressed: () async {
-                                await showModalBottomSheet<T>(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  builder: (BuildContext context) => SafeArea(
-                                    child: SortPopUp<T>(
-                                      controller: _controller,
+                            ],
+                          ),
+                          _buildAddButton(),
+                        ],
+                      ),
+
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.6,
+                        child: RefreshIndicator(
+                          onRefresh: _fetchData,
+                          child: Obx(() {
+                            final listToShow =
+                                ((widget.pageType == ListScreenType.noteLabels)
+                                        ? (_controller as LabelController)
+                                              .noteLabels
+                                        : (widget.pageType ==
+                                              ListScreenType.taskLabels)
+                                        ? (_controller as LabelController)
+                                              .taskLabels
+                                        : _controller.filteredList)
+                                    .cast<T>();
+
+                            if (_controller.isLoading.value &&
+                                listToShow.isEmpty) {
+                              return LoadingShimmer();
+                            }
+
+                            if (listToShow.isEmpty &&
+                                !_controller.isLoading.value) {
+                              return _buildEmptyState();
+                            }
+
+                            return ListView.builder(
+                              itemCount: listToShow.length,
+                              itemBuilder: (context, index) {
+                                final item = listToShow[index];
+
+                                final isFilterable = item is FilterableEntity;
+                                String dateCreated = '';
+                                if ((isFilterable &&
+                                        (item as FilterableEntity)
+                                                .dateCreated !=
+                                            null) ||
+                                    item is Team) {
+                                  dateCreated = DateFormat.yMd().format(
+                                    item.dateCreated!,
+                                  );
+                                }
+                                List<String> otherDetails = _getOtherDetails(
+                                  item,
+                                );
+                                final onTap =
+                                    _selectionMode != SelectionMode.none
+                                    ? () {
+                                        widget.onItemTap?.call(item);
+                                        _selectItem(item);
+                                      }
+                                    : onTapCard(item);
+
+                                // Build card-like widget to display details.
+                                final card = _buildCard(
+                                  item: item,
+                                  dateCreated: dateCreated,
+                                  otherDetails: otherDetails,
+                                  onTap: onTap,
+                                  iconButtons: _buildIconButtons(item),
+                                );
+
+                                final isSelected = _selectedItems.contains(
+                                  item,
+                                );
+                                return AnimatedContainer(
+                                  duration: Duration(milliseconds: 200),
+                                  margin: EdgeInsets.symmetric(vertical: 6),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: isSelected
+                                        ? Border.all(
+                                            color: Theme.of(
+                                              context,
+                                            ).primaryColor,
+                                            width: 2,
+                                          )
+                                        : null,
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap:
+                                          _selectionMode != SelectionMode.none
+                                          ? () => _selectItem(item)
+                                          : null,
+                                      onLongPress:
+                                          _selectionMode == SelectionMode.none
+                                          ? () {
+                                              setState(() {
+                                                _selectionMode =
+                                                    SelectionMode.regular;
+                                                _selectedItems.add(item);
+                                                if (widget
+                                                        .onSelectionModeChanged !=
+                                                    null) {
+                                                  widget
+                                                      .onSelectionModeChanged!(
+                                                    SelectionMode.regular,
+                                                    item,
+                                                  );
+                                                }
+                                              });
+                                            }
+                                          : null,
+                                      child: Stack(
+                                        children: [
+                                          card,
+                                          if (_selectionMode !=
+                                              SelectionMode.none)
+                                            Positioned(
+                                              top: 8,
+                                              right: 8,
+                                              child: Checkbox(
+                                                value: isSelected,
+                                                onChanged: (_) =>
+                                                    _selectItem(item),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      // ? ListTile(
+                                      //     subtitle: card,
+                                      //     onTap:
+                                      //         _selectionMode !=
+                                      //             SelectionMode.none
+                                      //         ? () => _selectItem(item)
+                                      //         : null,
+                                      //     trailing:
+                                      //         _selectionMode !=
+                                      //             SelectionMode.none
+                                      //         ? SizedBox(
+                                      //             width: 1,
+                                      //             child: Checkbox(
+                                      //               value: isSelected,
+                                      //               onChanged: (_) {
+                                      //                 _selectItem(item);
+                                      //               },
+                                      //             ),
+                                      //           )
+                                      //         : null,
+                                      //   )
+                                      // : card,
                                     ),
                                   ),
                                 );
                               },
-                              icon: Icon(
-                                Icons.sort,
-                                color: Theme.of(context).colorScheme.onPrimary,
-                              ),
-                            ),
-                          ],
+                            );
+                          }),
                         ),
-                        _buildAddButton(),
-                      ],
-                    ),
-
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: _fetchData,
-                        child: Obx(() {
-                          final listToShow =
-                              ((widget.pageType == ListScreenType.noteLabels)
-                                      ? (_controller as LabelController)
-                                            .noteLabels
-                                      : (widget.pageType ==
-                                            ListScreenType.taskLabels)
-                                      ? (_controller as LabelController)
-                                            .taskLabels
-                                      : _controller.filteredList)
-                                  .cast<T>();
-
-                          if (_controller.isLoading.value &&
-                              listToShow.isEmpty) {
-                            return LoadingShimmer();
-                          }
-
-                          if (listToShow.isEmpty &&
-                              !_controller.isLoading.value) {
-                            return _buildEmptyState();
-                          }
-
-                          return ListView.builder(
-                            itemCount: listToShow.length,
-                            itemBuilder: (context, index) {
-                              final item = listToShow[index];
-
-                              final isFilterable = item is FilterableEntity;
-                              String dateCreated = '';
-                              if ((isFilterable &&
-                                      (item as FilterableEntity).dateCreated !=
-                                          null) ||
-                                  item is Team) {
-                                dateCreated = DateFormat.yMd().format(
-                                  item.dateCreated!,
-                                );
-                              }
-                              List<String> otherDetails = _getOtherDetails(
-                                item,
-                              );
-                              final onTap = _selectionMode != SelectionMode.none
-                                  ? () {
-                                      widget.onItemTap?.call(item);
-                                      _selectItem(item);
-                                    }
-                                  : onTapCard(item);
-
-                              // Build card-like widget to display details.
-                              final card = _buildCard(
-                                item: item,
-                                dateCreated: dateCreated,
-                                otherDetails: otherDetails,
-                                onTap: onTap,
-                                iconButtons: _buildIconButtons(item),
-                              );
-
-                              final isSelected = _selectedItems.contains(item);
-                              return AnimatedContainer(
-                                duration: Duration(milliseconds: 200),
-                                margin: EdgeInsets.symmetric(vertical: 6),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: isSelected
-                                      ? Border.all(
-                                          color: Theme.of(context).primaryColor,
-                                          width: 2,
-                                        )
-                                      : null,
-                                ),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: _selectionMode != SelectionMode.none
-                                        ? () => _selectItem(item)
-                                        : null,
-                                    onLongPress:
-                                        _selectionMode == SelectionMode.none
-                                        ? () {
-                                            setState(() {
-                                              _selectionMode =
-                                                  SelectionMode.regular;
-                                              _selectedItems.add(item);
-                                            });
-                                          }
-                                        : null,
-                                    child: Stack(
-                                      children: [
-                                        card,
-                                        if (_selectionMode !=
-                                            SelectionMode.none)
-                                          Positioned(
-                                            top: 8,
-                                            right: 8,
-                                            child: Checkbox(
-                                              value: isSelected,
-                                              onChanged: (_) =>
-                                                  _selectItem(item),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                    // ? ListTile(
-                                    //     subtitle: card,
-                                    //     onTap:
-                                    //         _selectionMode !=
-                                    //             SelectionMode.none
-                                    //         ? () => _selectItem(item)
-                                    //         : null,
-                                    //     trailing:
-                                    //         _selectionMode !=
-                                    //             SelectionMode.none
-                                    //         ? SizedBox(
-                                    //             width: 1,
-                                    //             child: Checkbox(
-                                    //               value: isSelected,
-                                    //               onChanged: (_) {
-                                    //                 _selectItem(item);
-                                    //               },
-                                    //             ),
-                                    //           )
-                                    //         : null,
-                                    //   )
-                                    // : card,
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        }),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1121,6 +1147,11 @@ class _AddButtonPopUpState extends State<AddButtonPopUp> {
                     PermissionType.viewCreateTeam,
                   )))
             TextButton(
+              style: ButtonStyle(
+                foregroundColor: WidgetStatePropertyAll(
+                  Theme.of(context).colorScheme.surface,
+                ),
+              ),
               onPressed: () {
                 _removePopUp();
                 if (isClass) {

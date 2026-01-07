@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : confirmation_message.dart
+// Purpose        : Reusable confirmation dialog/message component
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'package:flutter/material.dart';
 
 class ButtonDetails {
@@ -18,15 +28,10 @@ Future<void> buildConfirmationMessage({
   String? content,
   Widget? contentWidget,
   List<ButtonDetails>? buttonDetails,
-  // String? buttonText1,
-  // Color? colorForButton1,
-  // String? buttonText2,
-  // Color? colorForButton2,
-  // required Future<void> Function() onTapOption1,
-  // Future<void> Function()? onTapOption2,
+  bool barrierDismissible = false,
 }) async {
   await showDialog(
-    barrierDismissible: false,
+    barrierDismissible: barrierDismissible,
     context: context,
     builder: (context) => AlertDialog(
       title: Text(title),

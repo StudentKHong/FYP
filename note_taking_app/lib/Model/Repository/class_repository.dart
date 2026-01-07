@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : class_repository.dart
+// Purpose        : Repository handling class entity persistence
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 21 December 2025
+// ==================================================
+
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -91,7 +101,7 @@ class ClassRepository extends BaseRepository<Class> {
         .map((snapshot) => snapshot.docs.length);
   }
 
-  Future<Class> join(String code) async {
+  Future<(Class data, bool alreadyJoined)> join(String code) async {
     // Verify the class code.
     final querySnapshot = await super.collection
         .where('code', isEqualTo: code)
@@ -110,7 +120,7 @@ class ClassRepository extends BaseRepository<Class> {
         .limit(1)
         .get();
     if (memberQuerySnapshot.docs.isNotEmpty) {
-      return Class.fromFirestore(documentSnapshot);
+      return (Class.fromFirestore(documentSnapshot), true);
     }
 
     // Add user as a class member.
@@ -130,7 +140,7 @@ class ClassRepository extends BaseRepository<Class> {
         "totalTeachers": FieldValue.increment(1),
       });
     }
-    return Class.fromFirestore(documentSnapshot);
+    return (Class.fromFirestore(documentSnapshot), false);
   }
 
   Future<void> _addMemberToClass(String classId) async {
@@ -138,6 +148,9 @@ class ClassRepository extends BaseRepository<Class> {
     final classMemberCollection = FirebaseFirestore.instance.collection(
       'class_members',
     );
+    if (_authController.user.value == null) {
+      throw Exception("User not authenticated.");
+    }
     final classMember = ClassMember(
       id: UniqueKey().toString(),
       classId: classId,
@@ -161,7 +174,9 @@ class ClassRepository extends BaseRepository<Class> {
         .limit(1)
         .get();
 
+    print('Query returned ${querySnapshot.docs.length} documents');
     final documentReference = querySnapshot.docs.first.reference;
+    print('Deleting class member document: ${documentReference.path}');
     await documentReference.delete();
 
     // Decrement number of total members by 1.

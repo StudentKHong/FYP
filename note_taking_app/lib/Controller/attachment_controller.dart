@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : attachment_controller.dart
+// Purpose        : Manages attachment state and upload/commit operations
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';

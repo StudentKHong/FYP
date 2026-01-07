@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : group.dart
+// Purpose        : UI for listing and interacting with groups/classes
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/auth_controller.dart';
@@ -13,6 +23,7 @@ import 'package:note_taking_app/Model/Models/group_model.dart';
 import 'package:note_taking_app/Model/Models/label_model.dart';
 import 'package:note_taking_app/Model/Models/note_model.dart';
 import 'package:note_taking_app/Model/Models/task_model.dart';
+import 'package:note_taking_app/UI/Navigation/named_routes.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
 import 'package:note_taking_app/UI/create_note.dart';
@@ -40,12 +51,9 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
   late Controller _groupController;
   late NoteController _noteController;
   late TaskController _taskController;
-  // final TextEditingController _searchController = TextEditingController();
 
   final List<Note> _selectedNotes = [];
   final List<Task> _selectedTasks = [];
-  // final noteListKey = GlobalKey<ListScreenState<Note>>();
-  // final taskListKey = GlobalKey<ListScreenState<Task>>();
 
   late SelectionMode _selectionMode;
   late TabController _tabController;
@@ -73,11 +81,6 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
     _tabController.addListener(() {
       _loadListener();
     });
-
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   _currentIndex = _tabController.index;
-    //   _fetchData();
-    // });
   }
 
   @override
@@ -88,7 +91,6 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
     Get.delete<NoteController>(tag: '${tag}_note');
     Get.delete<TaskController>(tag: '${tag}_task');
 
-    // _tabController.removeListener(_loadListener);
     _tabController.dispose();
     super.dispose();
   }
@@ -98,28 +100,8 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
       setState(() {
         _currentIndex = _tabController.index;
       });
-      // _fetchData();
     }
   }
-
-  // Future<void> _fetchData() async {
-  //   final groupId = widget.groupObject.id;
-  //   final groupType = widget.groupObject.runtimeType.toString().toLowerCase();
-
-  //   if (groupId != null) {
-  //     if (_currentIndex == 0) {
-  //       await _noteController.getByGroup(groupId, groupType);
-  //       if (_noteController.errorMessage.value.isNotEmpty) {
-  //         CustomDialog.showError("Error", _noteController.errorMessage.value);
-  //       }
-  //     } else {
-  //       await _taskController.getByGroup(groupId, groupType);
-  //       if (_taskController.errorMessage.value.isNotEmpty) {
-  //         CustomDialog.showError("Error", _taskController.errorMessage.value);
-  //       }
-  //     }
-  //   }
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -139,9 +121,7 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                     );
                 return Row(
                   children: [
-                    Text(
-                      latestGroup.name,
-                    ),
+                    Text(latestGroup.name),
                     IconButton(
                       onPressed: () {
                         Get.to(
@@ -183,7 +163,16 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                   isForShared: true,
                   hidePin: true,
                   hideArchive: true,
-                  hideDelete: !_roleController.hasPermission(PermissionType.deleteShared)
+                  hideDelete: !_roleController.hasPermission(
+                    PermissionType.deleteShared,
+                  ),
+                  onActionComplete: () {
+                    setState(() {
+                      _selectedNotes.clear();
+                      _selectedTasks.clear();
+                      _selectionMode = SelectionMode.none;
+                    });
+                  },
                 ),
 
                 if (_selectionMode == SelectionMode.regular)
@@ -232,7 +221,6 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
               controller: _tabController,
               children: [
                 ListScreen<Note>(
-                  // key: noteListKey,
                   keepAlive: true,
                   showAppBar: false,
                   title: '',
@@ -273,24 +261,22 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                       ),
                     );
                   },
-                  onAddTap:
+                  customAddButton:
                       _roleController.hasPermission(PermissionType.createShared)
-                      ? () {
-                          Get.to(
-                            NoteDetailScreen(
-                              mode: Mode.createShared,
-                              groupId: groupId,
-                              groupType: groupType,
-                              description:
-                                  "For $groupType ${widget.groupObject.name}",
-                              hideAttachmentButton: true,
-                            ),
-                          );
-                        }
+                      ? ShareButtonPopUp(
+                          group: group,
+                          type: ComponentType.note,
+                          onRefresh: () {
+                            setState(() {});
+                          },
+                          noteController: _noteController,
+                          taskController: _taskController,
+                        )
                       : null,
-                  onSelectionModeChanged: (mode) {
+                  onSelectionModeChanged: (mode, selectedNote) {
                     setState(() {
                       _selectionMode = mode;
+                      _selectedNotes.add(selectedNote);
                     });
                   },
                   onSelectionChanged: (selected) {
@@ -302,7 +288,6 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                       : null,
                 ),
                 ListScreen<Task>(
-                  // key: taskListKey,
                   keepAlive: true,
                   showAppBar: false,
                   title: '',
@@ -342,23 +327,22 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
                       ),
                     );
                   },
-                  onAddTap:
+                  customAddButton:
                       _roleController.hasPermission(PermissionType.createShared)
-                      ? () {
-                          Get.to(
-                            TaskDetailScreen(
-                              mode: Mode.createShared,
-                              groupId: groupId,
-                              groupType: groupType,
-                              description:
-                                  "For $groupType ${widget.groupObject.name}",
-                            ),
-                          );
-                        }
+                      ? ShareButtonPopUp(
+                          group: group,
+                          type: ComponentType.task,
+                          onRefresh: () {
+                            setState(() {});
+                          },
+                          noteController: _noteController,
+                          taskController: _taskController,
+                        )
                       : null,
-                  onSelectionModeChanged: (mode) {
+                  onSelectionModeChanged: (mode, selectedTask) {
                     setState(() {
                       _selectionMode = mode;
+                      _selectedTasks.add(selectedTask);
                     });
                   },
                   onSelectionChanged: (selected) {
@@ -374,6 +358,138 @@ class _ClassTeamScreenState extends State<ClassTeamScreen>
           ),
         ],
       ),
+    );
+  }
+}
+
+class ShareButtonPopUp extends StatefulWidget {
+  final Group group;
+  final ComponentType type;
+  final VoidCallback? onRefresh;
+  final NoteController noteController;
+  final TaskController taskController;
+
+  const ShareButtonPopUp({
+    super.key,
+    required this.group,
+    required this.type,
+    this.onRefresh,
+    required this.noteController,
+    required this.taskController
+  });
+
+  @override
+  State<ShareButtonPopUp> createState() => _ShareButtonPopUpState();
+}
+
+class _ShareButtonPopUpState extends State<ShareButtonPopUp> {
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      icon: Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary),
+      offset: const Offset(0, 50),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (value) async {
+        final groupType = widget.group.runtimeType
+            .toString()
+            .toLowerCase()
+            .trim();
+        final groupId = widget.group.id!;
+
+        if (value == 'create') {
+          if (widget.type == ComponentType.note) {
+            // You'll need to pass 'type' or logic here
+            await Get.to(
+              NoteDetailScreen(
+                mode: Mode.createShared,
+                hideAttachmentButton: true,
+                groupId: groupId,
+                groupType: groupType,
+              ),
+            );
+            await widget.noteController.getByGroup(groupId, groupType);
+          } else if (widget.type == ComponentType.task) {
+            await Get.to(
+              TaskDetailScreen(
+                mode: Mode.createShared,
+                groupId: groupId,
+                groupType: groupType,
+              ),
+            );
+            await widget.taskController.getByGroup(groupId, groupType);
+          }
+          widget.onRefresh?.call();
+        } else if (value == 'select') {
+          bool success = false;
+          if (widget.type == ComponentType.note) {
+            final selectedNotes =
+                await Get.toNamed(Routes.selectNote) as List<Note>?;
+            if (selectedNotes != null && selectedNotes.isNotEmpty) {
+              await widget.noteController.shareMultiple(
+                selectedNotes,
+                widget.group.id!,
+                groupType,
+              );
+
+              if (widget.noteController.errorMessage.value.isNotEmpty) {
+                CustomDialog.showError(
+                  "Error",
+                  widget.noteController.errorMessage.value,
+                );
+              } else {
+                CustomDialog.showSuccess(
+                  "Success",
+                  "Successfully share notes to group.",
+                );
+                success = true;
+                await widget.noteController.getByGroup(groupId, groupType);
+              }
+            } else {
+              CustomDialog.showInfo("Info", "No notes selected to share.");
+            }
+          } else if (widget.type == ComponentType.task) {
+            final selectedTasks =
+                await Get.toNamed(Routes.selectTask) as List<Task>?;
+            if (selectedTasks != null && selectedTasks.isNotEmpty) {
+              await widget.taskController.shareMultiple(
+                selectedTasks,
+                widget.group.id!,
+                groupType,
+              );
+
+              if (widget.taskController.errorMessage.value.isNotEmpty) {
+                CustomDialog.showError(
+                  "Error",
+                  widget.taskController.errorMessage.value,
+                );
+              } else {
+                CustomDialog.showSuccess(
+                  "Success",
+                  "Successfully share tasks to group.",
+                );
+                success = true;
+                await widget.taskController.getByGroup(groupId, groupType);
+              }
+            } else {
+              CustomDialog.showInfo("Info", "No tasks selected to share.");
+            }
+          }
+
+          if (success) {
+            widget.onRefresh?.call();
+          }
+        }
+      },
+      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+        const PopupMenuItem<String>(
+          value: 'create',
+          child: Center(child: Text('Create New')),
+        ),
+        const PopupMenuItem<String>(
+          value: 'select',
+          child: Center(child: Text('Select From Existing')),
+        ),
+      ],
     );
   }
 }

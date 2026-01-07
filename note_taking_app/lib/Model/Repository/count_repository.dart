@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : count_repository.dart
+// Purpose        : Repository exposing aggregated counts
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 16 December 2025
+// ==================================================
+
 // import 'package:cloud_firestore/cloud_firestore.dart';
 
 // class CountRepository {

@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : label_editor.dart
+// Purpose        : Inline editor widget for adding/removing labels
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 24 December 2025
+// ==================================================
+
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:get/get.dart';

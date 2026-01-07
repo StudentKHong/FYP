@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : label_model.dart
+// Purpose        : Data model for labels/tags used on notes/tasks
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 21 December 2025
+// ==================================================
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:note_taking_app/Model/Models/entity_model.dart';
 import 'package:note_taking_app/Model/Models/enumeration.dart';

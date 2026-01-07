@@ -1,8 +1,19 @@
+// ==================================================
+// Program Name   : drop_down_button.dart
+// Purpose        : Custom drop-down button component used in forms
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 23 December 2025
+// ==================================================
+
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 
 class CustomDropDownBox extends StatelessWidget {
   final String title;
+  final Color titleColor;
   final List<String> items;
   final String selectedValue;
   final ValueChanged? onChanged;
@@ -11,6 +22,7 @@ class CustomDropDownBox extends StatelessWidget {
   const CustomDropDownBox({
     super.key,
     required this.title,
+    this.titleColor = Colors.black,
     required this.items,
     required this.selectedValue,
     this.onChanged,
@@ -21,11 +33,9 @@ class CustomDropDownBox extends StatelessWidget {
     return [
       Text(
         title,
-        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-          color: onChanged == null
-              ? Colors.grey.shade400
-              : Theme.of(context).colorScheme.surface,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium!.copyWith(color: titleColor),
       ),
       DropdownButton2(
         isExpanded: true,

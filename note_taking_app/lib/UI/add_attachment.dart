@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : add_attachment.dart
+// Purpose        : UI to add attachments to notes or tasks
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'package:animated_toggle_switch/animated_toggle_switch.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -123,7 +133,6 @@ class _AddAttachmentScreenState extends State<AddAttachmentScreen> {
                                 hideAttachmentButton: true,
                               ),
                             );
-                    print("Type of result: $result");
                   } else {
                     result =
                         await Get.toNamed(Routes.createTask)

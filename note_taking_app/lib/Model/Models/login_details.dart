@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : login_details.dart
+// Purpose        : Stores login-related details for users
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 16 December 2025
+// ==================================================
+
 // Details to be displayed during login.
 import 'package:flutter/widgets.dart';
 

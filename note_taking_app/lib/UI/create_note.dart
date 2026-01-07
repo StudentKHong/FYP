@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : create_note.dart
+// Purpose        : UI for creating, editing and viewing notes
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -63,6 +73,7 @@ class NoteDetailScreen extends StatefulWidget {
 
 class _NoteDetailScreenState extends State<NoteDetailScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey _bulletMenuKey = GlobalKey();
 
   late final String title;
   final int maxLength = 2000;
@@ -154,19 +165,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
         TextSelection.collapsed(offset: 0),
         ChangeSource.local,
       );
-
-      // _syncLocalImage(Delta.fromJson(deltaJson)).then((delta) {
-      //   contentController.document = Document.fromDelta(delta);
-      //   contentController.updateSelection(
-      //     TextSelection.collapsed(offset: 0),
-      //     ChangeSource.local,
-      //   );
-      //   _listenToContentChanges();
-      // });
     }
-    // else {
-    //   _listenToContentChanges();
-    // }
     numberOfCharacters = ValueNotifier(
       contentController.document.toPlainText().length,
     );
@@ -177,15 +176,6 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
 
     // Load labels.
     selectedLabel = widget.initialLabel ?? widget.note?.label;
-    // SchedulerBinding.instance.addPostFrameCallback((_) {
-    //   _loadLabels();
-    //   if (selectedLabel != null &&
-    //       !labelController.noteLabels.any(
-    //         (label) => label.id == selectedLabel!.id,
-    //       )) {
-    //     labelController.noteLabels.insert(0, selectedLabel!);
-    //   }
-    // });
 
     // Load the initial state of the auto generate label toggle button.
     _loadCurrentSettings();
@@ -468,9 +458,6 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                 Colors.black,
             onTapOption: () async => await _saveChanges(
               successAction: (note) async {
-                print("SAVE SUCCESS: note = ${note?.runtimeType}, id = ${note?.id}");
-
-                print("Popping NoteDetailScreen with result");
                 Get.back(result: note);
               },
             ),
@@ -501,43 +488,62 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
       child: Scaffold(
         key: _scaffoldKey,
         appBar: CustomAppBar(
-          titleWidget: Row(
-            children: [
-              Text(title),
-              CustomInfoButton(
-                infoDetails: [
-                  Info(
-                    text:
-                        "To save changes, select the back button to apply changes.",
-                  ),
-                ],
-              ),
-            ],
-          ),
-          subtitle: widget.description,
-          actions:
-              (note != null &&
-                  (widget.mode == Mode.edit || widget.mode == Mode.editShared))
-              ? AdditionalOptions.buildDefaultOptions(
-                  context: context,
-                  controller: noteController,
-                  contentController: contentController,
-                  titleController: titleController,
-                  notes: [note!],
-                  isForShared: widget.mode == Mode.editShared,
-                  onUpdate: (updatedNotes) {
-                    final list = updatedNotes
-                        .map((item) => item as Note)
-                        .toList();
-                    if (list.length == 1) {
-                      setState(() {
-                        note = list.first;
-                        hasChanged = true;
-                      });
-                    }
-                  },
+          titleText: widget.mode == Mode.view ? title : null,
+          titleWidget: widget.mode != Mode.view
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(title),
+                    CustomInfoButton(
+                      infoDetails: [
+                        Info(
+                          text:
+                              "To save changes, select the back button to apply changes.",
+                        ),
+                      ],
+                    ),
+                  ],
                 )
-              : [],
+              : null,
+          subtitle: widget.description,
+          actions: [
+            if (widget.mode != Mode.view)
+              IconButton(
+                onPressed: () async {
+                  if (hasChanged) {
+                    await _saveChanges(
+                      successAction: (note) {
+                        Get.back(result: note);
+                      },
+                    );
+                  } else {
+                    CustomDialog.showInfo("Info", "Note is up to date.");
+                  }
+                },
+                icon: Icon(Icons.save),
+              ),
+            if (note != null &&
+                (widget.mode == Mode.edit || widget.mode == Mode.editShared))
+              ...AdditionalOptions.buildDefaultOptions(
+                context: context,
+                controller: noteController,
+                contentController: contentController,
+                titleController: titleController,
+                notes: [note!],
+                isForShared: widget.mode == Mode.editShared,
+                onUpdate: (updatedNotes) {
+                  final list = updatedNotes
+                      .map((item) => item as Note)
+                      .toList();
+                  if (list.length == 1) {
+                    setState(() {
+                      note = list.first;
+                      hasChanged = true;
+                    });
+                  }
+                },
+              ),
+          ],
           replaceDefaultActions: false,
           onMenuTap: () {
             if (hasChanged) {
@@ -639,7 +645,13 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                         autoFocus: false,
                         embedBuilders: [
                           ImageEmbedBuilder(),
-                          ...FlutterQuillEmbeds.editorBuilders(),
+                          ...FlutterQuillEmbeds.editorBuilders(
+                            // imageEmbedConfig: QuillEditorImageEmbedConfig(
+                            //   imageErrorWidgetBuilder:
+                            //       (context, error, stackTrace) =>
+                            //           Text('Error leading image'),
+                            // ),
+                          ),
                         ],
                       ),
                     ),
@@ -651,16 +663,14 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                         showUndo: false,
                         showRedo: false,
                         showStrikeThrough: false,
-                        showColorButton: false,
                         showBackgroundColorButton: false,
                         showFontFamily: false,
-                        showFontSize: false,
                         showSmallButton: false,
+                        showListBullets: false,
                         showListCheck: false,
                         showListNumbers: false,
                         showCodeBlock: false,
                         showQuote: false,
-                        showIndent: false,
                         showLink: false,
                         showDividers: false,
                         showSearchButton: false,
@@ -681,6 +691,88 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                 color: Theme.of(context).colorScheme.onPrimary,
                               ),
                             ),
+                          ),
+                          color: QuillToolbarColorButtonOptions(
+                            customOnPressedCallback: (controller, isBackground) async {
+                              final color = await showDialog<Color>(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    title: Text(
+                                      isBackground
+                                          ? 'Background Color'
+                                          : 'Text Color',
+                                    ),
+                                    content: SizedBox(
+                                      width:
+                                          MediaQuery.of(context).size.width *
+                                          0.8,
+                                      child: Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children:
+                                            [
+                                                  Colors.black,
+                                                  Colors.red,
+                                                  Colors.blue,
+                                                  Colors.green,
+                                                  Colors.yellow,
+                                                ]
+                                                .map(
+                                                  (color) => InkWell(
+                                                    onTap: () => Navigator.pop(
+                                                      context,
+                                                      color,
+                                                    ),
+                                                    child: Container(
+                                                      width: 50,
+                                                      height: 50,
+                                                      decoration: BoxDecoration(
+                                                        color: color,
+                                                        shape: BoxShape.circle,
+                                                        border: Border.all(
+                                                          color: Colors.grey,
+                                                          width: 2,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                )
+                                                .toList(),
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: Text('Cancel'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+
+                              if (color != null) {
+                                final hex =
+                                    '#${color.value.toRadixString(16).substring(2, 8)}';
+                                final index = controller.selection.baseOffset;
+                                final length =
+                                    controller.selection.extentOffset - index;
+
+                                if (isBackground) {
+                                  controller.formatText(
+                                    index,
+                                    length,
+                                    BackgroundAttribute(hex),
+                                  );
+                                } else {
+                                  controller.formatText(
+                                    index,
+                                    length,
+                                    ColorAttribute(hex),
+                                  );
+                                }
+                              }
+                            },
                           ),
                         ),
                         embedButtons: FlutterQuillEmbeds.toolbarButtons(
@@ -704,7 +796,16 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                         controller.selection.baseOffset;
                                     controller.document.insert(
                                       index,
-                                      BlockEmbed.image(imagePath),
+                                      BlockEmbed.custom(
+                                        CustomBlockEmbed(
+                                          'image',
+                                          jsonEncode({
+                                            'source': imagePath,
+                                            'width': 300,
+                                            'height': 200,
+                                          }),
+                                        ),
+                                      ),
                                     );
                                     controller.updateSelection(
                                       TextSelection.collapsed(
@@ -781,18 +882,6 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                                   final file = File(filePath);
                                                   await file.writeAsBytes(data);
 
-                                                  // Add after file.writeAsBytes
-                                                  print(
-                                                    "File exists: ${await file.exists()}",
-                                                  );
-                                                  print(
-                                                    "File path: ${file.path}",
-                                                  );
-
-                                                  print(
-                                                    "Saved drawing to: $filePath",
-                                                  );
-
                                                   Get.back(result: filePath);
                                                 }
                                               },
@@ -811,16 +900,17 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                   ),
                                 );
                                 if (result != null) {
-                                  contentController.replaceText(
+                                  contentController.document.insert(
                                     contentController.selection.baseOffset,
-                                    0,
-                                    BlockEmbed.image(result),
-                                    TextSelection.collapsed(
-                                      offset:
-                                          contentController
-                                              .selection
-                                              .baseOffset +
-                                          1,
+                                    BlockEmbed.custom(
+                                      CustomBlockEmbed(
+                                        'image',
+                                        jsonEncode({
+                                          'source': result,
+                                          'width': 300,
+                                          'height': 200,
+                                        }),
+                                      ),
                                     ),
                                   );
                                   final noteId = note?.id ?? controllerTag;
@@ -837,6 +927,118 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                                 }
 
                                 hasChanged = true;
+                              },
+                            ),
+
+                            QuillToolbarCustomButtonOptions(
+                              icon: Icon(Icons.format_list_bulleted),
+                              tooltip: "Bullets",
+                              onPressed: () async {
+                                final RenderBox button =
+                                    _bulletMenuKey.currentContext
+                                            ?.findRenderObject()
+                                        as RenderBox;
+                                final RenderBox overlay =
+                                    Overlay.of(
+                                          context,
+                                        ).context.findRenderObject()
+                                        as RenderBox;
+                                final RelativeRect position =
+                                    RelativeRect.fromRect(
+                                      Rect.fromPoints(
+                                        button.localToGlobal(
+                                          Offset.zero,
+                                          ancestor: overlay,
+                                        ),
+                                        button.localToGlobal(
+                                          button.size.bottomRight(Offset.zero),
+                                          ancestor: overlay,
+                                        ),
+                                      ),
+                                      Offset.zero & overlay.size,
+                                    );
+
+                                final selected = await showMenu(
+                                  context: context,
+                                  position: position,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  items: [
+                                    PopupMenuItem(
+                                      value: 'ordered_number',
+                                      child: Text('1. Numbers'),
+                                    ),
+                                    PopupMenuItem(
+                                      value: '• ',
+                                      child: Text('• Dot'),
+                                    ),
+                                    PopupMenuItem(
+                                      value: '○ ',
+                                      child: Text('○ Circle'),
+                                    ),
+                                    PopupMenuItem(
+                                      value: '- ',
+                                      child: Text('- Dash'),
+                                    ),
+                                    PopupMenuItem(
+                                      value: '→ ',
+                                      child: Text('→ Arrow'),
+                                    ),
+                                  ],
+                                );
+
+                                if (selected != null && selected.isNotEmpty) {
+                                  final index =
+                                      contentController.selection.baseOffset;
+                                  final length =
+                                      contentController.selection.extentOffset -
+                                      index;
+
+                                  if (selected.startsWith('ordered_')) {
+                                    final isOrdered =
+                                        contentController
+                                            .getSelectionStyle()
+                                            .attributes['list']
+                                            ?.value ==
+                                        'ordered';
+                                    contentController.formatText(
+                                      index,
+                                      length,
+                                      Attribute.fromKeyValue(
+                                        'list',
+                                        isOrdered ? null : 'ordered',
+                                      ),
+                                    );
+
+                                    if (!isOrdered) {
+                                      final newOffset = contentController
+                                          .selection
+                                          .baseOffset;
+                                      contentController.updateSelection(
+                                        TextSelection.collapsed(
+                                          offset: newOffset,
+                                        ),
+                                        ChangeSource.local,
+                                      );
+                                    }
+                                  } else {
+                                    contentController.replaceText(
+                                      index,
+                                      length,
+                                      selected,
+                                      null,
+                                    );
+                                    contentController.updateSelection(
+                                      TextSelection.collapsed(
+                                        offset: index + selected.length,
+                                      ),
+                                      ChangeSource.local,
+                                    );
+                                  }
+
+                                  hasChanged = true;
+                                }
                               },
                             ),
                           ],
@@ -878,34 +1080,32 @@ class AttachmentExpandableButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.centerRight,
-      children: [
-        Positioned(
-          child: ElevatedButton(
-            onPressed: () {
-              AttachmentScreen.displayAttachments(
-                context: context,
-                entity: entity,
-                attachmentController: attachmentController,
-              );
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  count.toString(),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium!.copyWith(color: Colors.black),
-                ),
-                Icon(Icons.first_page, color: Colors.black),
-              ],
-            ),
+    return ElevatedButton(
+      onPressed: () {
+        AttachmentScreen.displayAttachments(
+          context: context,
+          entity: entity,
+          attachmentController: attachmentController,
+        );
+      },
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            count.toString(),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium!.copyWith(color: Colors.black),
           ),
-        ),
-      ],
+          const SizedBox(width: 10),
+          Icon(Icons.first_page, color: Colors.grey.shade800, size: 13),
+        ],
+      ),
     );
   }
 }
@@ -913,46 +1113,224 @@ class AttachmentExpandableButton extends StatelessWidget {
 class ImageEmbedBuilder extends EmbedBuilder {
   static final Map<String, Uint8List> cache = {};
 
+  Map<String, dynamic> parseImageData(dynamic data) {
+    if (data is String) {
+      try {
+        final decodedData = jsonDecode(data);
+        if (decodedData is Map) {
+          return Map<String, dynamic>.from(decodedData);
+        } else {
+          return {'source': data.toString()};
+        }
+      } catch (_) {
+        return {'source': data.toString()};
+      }
+    } else {
+      return {'source': data.toString()};
+    }
+  }
+
+  int findEmbedOffset(QuillController controller, String oldSource) {
+    final delta = controller.document.toDelta().toList();
+    int offset = 0;
+
+    for (final op in delta) {
+      if (op.isInsert && op.data is Map) {
+        final dataMap = op.data as Map;
+
+        // Check for custom block embed (your Firestore structure)
+        if (dataMap.containsKey('custom')) {
+          try {
+            final customData = jsonDecode(dataMap['custom']);
+            if (customData is Map && customData.containsKey('image')) {
+              final imageJson = customData['image'];
+              final imageData = parseImageData(imageJson);
+
+              if (imageData['source'] == oldSource) {
+                return offset;
+              }
+            }
+          } catch (e) {
+            print("Error parsing custom data: $e");
+          }
+        }
+
+        // Fallback: Check for standard image embed
+        if (dataMap.containsKey('image')) {
+          final imageData = parseImageData(dataMap['image']);
+          if (imageData['source'] == oldSource) {
+            return offset;
+          }
+        }
+      }
+      offset += op.length ?? 1;
+    }
+
+    return -1;
+  }
+
   @override
   Widget build(BuildContext context, EmbedContext embedContext) {
     final node = embedContext.node;
-    final data = node.value.data as String;
+    final data = node.value.data;
+
+    final map = parseImageData(data);
+
+    final String imageSource = map['source'] ?? '';
+    final double? width = map['width'] is num
+        ? (map['width'] as num).toDouble()
+        : null;
+    final double? height = map['height'] is num
+        ? (map['height'] as num).toDouble()
+        : null;
 
     Widget imageWidget;
     // Detect image path (online or local path).
-    if (data.startsWith('data:image')) {
-      final cachedBytes = cache[data];
+    if (imageSource.startsWith('data:image')) {
+      final cachedBytes = cache[imageSource];
 
       final Uint8List bytes;
       if (cachedBytes != null) {
         bytes = cachedBytes;
       } else {
-        final base64String = data.split(',')[1];
+        final base64String = imageSource.split(',')[1];
         final base64 = base64String.replaceAll(RegExp(r'\s+'), '');
         bytes = base64Decode(base64);
-        cache[data] = bytes;
+        cache[imageSource] = bytes;
       }
 
       imageWidget = Image.memory(bytes, fit: BoxFit.contain);
-    } else if (data.startsWith('/')) {
-      imageWidget = Image.file(File(data), fit: BoxFit.contain);
-    } else if (data.startsWith('http')) {
-      imageWidget = Image.network(data.toString(), fit: BoxFit.contain);
+    } else if (imageSource.startsWith('/')) {
+      imageWidget = Image.file(File(imageSource), fit: BoxFit.contain);
+    } else if (imageSource.startsWith('http')) {
+      imageWidget = Image.network(imageSource, fit: BoxFit.contain);
     } else {
       imageWidget = Icon(Icons.broken_image);
     }
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8),
-      child: Material(
-        borderRadius: BorderRadius.circular(10),
-        clipBehavior: Clip.hardEdge,
-        color: Colors.white,
-        child: imageWidget,
+      child: ResizableImageWidget(
+        initialWidth: width ?? 300,
+        initialHeight: height ?? 200,
+        readOnly: embedContext.readOnly,
+        onResizeEnd: (newWidth, newHeight) {
+          final controller = embedContext.controller;
+          final node = embedContext.node;
+
+          final map = parseImageData(node.value.data);
+          final oldSource = map['source'] ?? '';
+
+          map['width'] = newWidth;
+          map['height'] = newHeight;
+
+          final offset = findEmbedOffset(controller, oldSource);
+          if (offset >= 0) {
+            final newJson = jsonEncode(map);
+            controller.document.delete(offset, 1);
+            controller.document.insert(
+              offset,
+              BlockEmbed.custom(CustomBlockEmbed('image', newJson)),
+            );
+
+            final state = context
+                .findAncestorStateOfType<_NoteDetailScreenState>();
+            if (state != null) {
+              state.hasChanged = true;
+            }
+          }
+        },
+        child: Material(
+          borderRadius: BorderRadius.circular(10),
+          clipBehavior: Clip.antiAlias,
+          color: Colors.white,
+          child: imageWidget,
+        ),
       ),
     );
   }
 
   @override
   String get key => BlockEmbed.imageType;
+}
+
+class ResizableImageWidget extends StatefulWidget {
+  final Widget child;
+  final double initialWidth;
+  final double initialHeight;
+  final bool readOnly;
+  final Function(double width, double height)? onResizeEnd;
+  const ResizableImageWidget({
+    super.key,
+    required this.child,
+    required this.initialWidth,
+    required this.initialHeight,
+    this.readOnly = false,
+    this.onResizeEnd,
+  });
+
+  @override
+  State<ResizableImageWidget> createState() => _ResizableImageWidgetState();
+}
+
+class _ResizableImageWidgetState extends State<ResizableImageWidget> {
+  late double width;
+  late double height;
+  bool isResizing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    width = widget.initialWidth;
+    height = widget.initialHeight;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final maxHeight = constraints.maxHeight;
+
+        width = width.clamp(100, maxWidth);
+        height = height.clamp(100, maxHeight);
+
+        return Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            SizedBox(width: width, height: height, child: widget.child),
+            if (!widget.readOnly)
+              Positioned(
+                left: width - 40,
+                top: height - 40,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onPanUpdate: (details) {
+                    setState(() {
+                      isResizing = true;
+                      width = (width + details.delta.dx).clamp(100, 600);
+                      height = (height + details.delta.dy).clamp(100, 600);
+                    });
+                  },
+                  onPanEnd: (_) {
+                    setState(() {
+                      isResizing = false;
+                    });
+                    widget.onResizeEnd?.call(width, height);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withAlpha(90),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(Icons.zoom_out_map),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
 }

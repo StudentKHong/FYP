@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : setting_repository.dart
+// Purpose        : Repository for settings persistence and queries
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 19 December 2025
+// ==================================================
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/auth_controller.dart';

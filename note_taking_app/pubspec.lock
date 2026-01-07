@@ -933,6 +933,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.0"
+  names_launcher:
+    dependency: "direct main"
+    description:
+      name: names_launcher
+      sha256: "77571f7f4eef9f1e29afe9209640bf868cbc6fd6feea769e0111d59435ef9914"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.2"
   nested:
     dependency: transitive
     description:
@@ -1410,6 +1418,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.3"
+  tuple:
+    dependency: "direct main"
+    description:
+      name: tuple
+      sha256: a97ce2013f240b2f3807bcbaf218765b6f301c3eff91092bcfa23a039e7dd151
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.2"
   typed_data:
     dependency: transitive
     description:

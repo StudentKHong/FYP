@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : group_details.dart
+// Purpose        : UI showing details for a specific group or team
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -7,6 +17,7 @@ import 'package:note_taking_app/Controller/team_controller.dart';
 import 'package:note_taking_app/Model/Models/class_model.dart';
 import 'package:note_taking_app/Model/Models/group_model.dart';
 import 'package:note_taking_app/Model/Models/team_model.dart';
+import 'package:note_taking_app/UI/Navigation/named_routes.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_bar.dart';
 import 'package:note_taking_app/UI/SharedComponents/confirmation_message.dart';
 import 'package:note_taking_app/UI/SharedComponents/show_error_dialog.dart';
@@ -89,8 +100,11 @@ class _ClassTeamDetailsScreenState extends State<ClassTeamDetailsScreen> {
                             style: Theme.of(context).textTheme.bodyLarge,
                           ),
                           if (roleController.hasPermission(
-                            PermissionType.createClass,
-                          ))
+                                PermissionType.createClass,
+                              ) ||
+                              roleController.hasPermission(
+                                PermissionType.viewCreateTeam,
+                              ))
                             IconButton(
                               onPressed: () {
                                 setState(() {
@@ -99,6 +113,7 @@ class _ClassTeamDetailsScreenState extends State<ClassTeamDetailsScreen> {
                               },
                               icon: Icon(
                                 !isEditable ? Icons.edit : Icons.remove_red_eye,
+                                color: Theme.of(context).colorScheme.onPrimary,
                               ),
                             ),
                         ],
@@ -115,12 +130,14 @@ class _ClassTeamDetailsScreenState extends State<ClassTeamDetailsScreen> {
                                 text: 'Yes',
                                 buttonColor: Colors.green,
                                 onTapOption: () async {
-                                  Get.back();
-                                  await classController.leave(
-                                    widget.groupObject.id!,
-                                  );
-                                  if (widget.groupObject.id != null) {
+                                  Get.toNamed(Routes.classes);
+                                  if (widget.groupObject.id == null) return;
+                                  if (groupType == "Class") {
                                     await classController.leave(
+                                      widget.groupObject.id!,
+                                    );
+                                  } else if (groupType == "Team") {
+                                    await teamController.leave(
                                       widget.groupObject.id!,
                                     );
                                   }
@@ -132,6 +149,15 @@ class _ClassTeamDetailsScreenState extends State<ClassTeamDetailsScreen> {
                                     CustomDialog.showError(
                                       "Error",
                                       classController.errorMessage.value,
+                                    );
+                                    return;
+                                  } else if (teamController
+                                      .errorMessage
+                                      .value
+                                      .isNotEmpty) {
+                                    CustomDialog.showError(
+                                      "Error",
+                                      teamController.errorMessage.value,
                                     );
                                     return;
                                   }
@@ -215,6 +241,13 @@ class _ClassTeamDetailsScreenState extends State<ClassTeamDetailsScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
+                          if (_titleController.text.trim().isEmpty) {
+                            CustomDialog.showError(
+                              "Error",
+                              "$groupType name cannot be empty.",
+                            );
+                            return;
+                          }
                           Group updatedGroup;
                           if (_groupObject is Class) {
                             final currentClass = _groupObject as Class;

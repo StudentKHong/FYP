@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : login.dart
+// Purpose        : Login screen UI and form handling
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 24 December 2025
+// ==================================================
+
 import 'package:email_validator/email_validator.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -39,16 +49,6 @@ class _LoginScreenState extends State<LoginScreen> {
     ),
   ];
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   WidgetsBinding.instance.addPostFrameCallback((_) => _loadTheme());
-  // }
-
-  // Future<void> _loadTheme() async {
-  //   await themeController.loadLocalTheme();
-  // }
-
   bool _validateInputs() {
     bool isValid = true;
     String? email = loginDetails
@@ -85,6 +85,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Hero(
                     tag: 'app_logo',
                     child: Image.asset('assets/logo.png'),
+                  ),
+                ),
+                Center(
+                  child: Text(
+                    "NoteTask",
+                    style: Theme.of(context).textTheme.headlineLarge!.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.0,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
                 ),
                 ...loginDetails.map((detail) {

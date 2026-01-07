@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : app_theme.dart
+// Purpose        : Central theme and styling used across the app
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 24 December 2025
+// ==================================================
+
 // To support changing between dark and light themes through settings.
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -14,7 +24,7 @@ class AppTheme {
     scaffoldBackgroundColor: Color(0xFFF4F5F7),
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.blue,
-      foregroundColor: Colors.grey,
+      foregroundColor: Colors.black,
       titleTextStyle: GoogleFonts.inter(
         fontSize: 20,
         fontWeight: FontWeight.bold,
@@ -85,7 +95,7 @@ class AppTheme {
     scaffoldBackgroundColor: Colors.black,
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.blue,
-      foregroundColor: Colors.white,
+      foregroundColor: Colors.black,
       titleTextStyle: GoogleFonts.inter(
         fontSize: 20,
         fontWeight: FontWeight.bold,

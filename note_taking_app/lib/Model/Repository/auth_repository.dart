@@ -1,10 +1,32 @@
+// ==================================================
+// Program Name   : auth_repository.dart
+// Purpose        : Authentication-related repository operations
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 21 December 2025
+// ==================================================
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:note_taking_app/Model/Models/user_model.dart' as user_model;
 import 'package:note_taking_app/Model/Models/enumeration.dart' as model;
+import 'package:note_taking_app/Model/Models/user_model.dart';
 import 'package:note_taking_app/Service/offline_first_service.dart';
 
 class AuthenticationRepository {
+  Future<AppUser?> getUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+
+    final documentSnapshot = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    if (documentSnapshot.exists) {
+      return AppUser.fromFirestore(documentSnapshot);
+    }
+    return null;
+  }
+
   Future<user_model.AppUser?> login(String email, String password) async {
     UserCredential userCredential = await FirebaseAuth.instance
         .signInWithEmailAndPassword(email: email, password: password);

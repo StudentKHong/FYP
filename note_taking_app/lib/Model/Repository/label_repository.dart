@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : label_repository.dart
+// Purpose        : Repository for labels persistence and queries
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 24 December 2025
+// ==================================================
+
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';

@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : shared_task_repository.dart
+// Purpose        : Repository for shared tasks synchronization
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 16 December 2025
+// ==================================================
+
 // import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:note_taking_app/Model/Models/shared_task_model.dart';
 // import 'package:note_taking_app/Model/Repository/crud_repository.dart';

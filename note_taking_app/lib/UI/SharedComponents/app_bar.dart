@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : app_bar.dart
+// Purpose        : Custom application bar widget and helpers
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:get/get.dart';
@@ -51,15 +61,19 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       title: subtitle == null
           ? appBarTitle
           : Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                appBarTitle,
-                const SizedBox(height: 2),
+                SizedBox(
+                  height: 30,
+                  child: appBarTitle
+                ),
                 Text(
                   subtitle ?? '',
-                  style: Theme.of(
-                    context,
-                  ).appBarTheme.titleTextStyle!.copyWith(fontSize: 10, fontWeight: FontWeight.normal),
+                  style: Theme.of(context).appBarTheme.titleTextStyle!.copyWith(
+                    fontSize: 10,
+                    fontWeight: FontWeight.normal
+                  ),
                 ),
               ],
             ),
@@ -631,23 +645,8 @@ class AdditionalOptions {
                           .whereType<String>()
                           .toList();
 
-                      print(
-                        "Note ids length (preparing delete): ${noteIds?.length}",
-                      );
-                      print(
-                        "Task ids length (preparing delete): ${taskIds?.length}",
-                      );
-                      // print("Task id: ${tasks?.first.id}");
-                      // print("isForShared: $isForShared");
-                      // print("noteIds: $noteIds");
-                      // print("taskIds: $taskIds");
-                      // print("labelIds: $labelIds");
-                      // print("controller type: ${controller.runtimeType}");
-                      // print("groupId: $groupId, groupType: $groupType");
-
                       if (isForShared && noteIds != null) {
                         if (groupId != null && groupType != null) {
-                          print("Delete Shared Notes.");
                           final noteController = Get.find<NoteController>(
                             tag: 'group_${groupId}_note',
                           );
@@ -660,7 +659,6 @@ class AdditionalOptions {
                       }
                       if (isForShared && taskIds != null) {
                         if (groupId != null && groupType != null) {
-                          print("Delete Shared Tasks.");
                           final taskController = Get.find<TaskController>(
                             tag: 'group_${groupId}_task',
                           );
@@ -673,11 +671,9 @@ class AdditionalOptions {
                       }
                       if (!isForShared) {
                         if (noteIds != null) {
-                          print("Normal Delete Notes.");
                           await controller.delete(noteIds);
                         }
                         if (taskIds != null) {
-                          print("Normal Delete Tasks.");
                           await controller.delete(taskIds);
                           for (String taskId in taskIds) {
                             await flutterLocalNotificationsPlugin.cancel(
@@ -686,7 +682,6 @@ class AdditionalOptions {
                           }
                         }
                         if (labelIds != null) {
-                          print("Normal Delete Labels.");
                           await controller.delete(labelIds);
                         }
                       }
@@ -739,16 +734,15 @@ class AdditionalOptions {
 
               final roleController = Get.find<RoleController>();
               buildConfirmationMessage(
+                barrierDismissible: true,
                 context: context,
                 title: 'Share Confirmation',
                 buttonDetails: [
                   ButtonDetails(
                     text:
-                        (roleController.hasPermission(
+                        roleController.hasPermission(
                                   PermissionType.createShared,
-                                ) &&
-                                isForShared) ||
-                            !isForShared
+                                )
                         ? 'Share within app'
                         : null,
                     buttonColor: Colors.grey,

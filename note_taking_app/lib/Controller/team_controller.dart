@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : team_controller.dart
+// Purpose        : Manages team entities and membership
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 23 December 2025
+// ==================================================
+
 import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/auth_controller.dart';
 import 'package:note_taking_app/Controller/base_controller.dart';
@@ -43,8 +53,8 @@ class TeamController extends Controller<Team> {
       errorMessage.value = "";
       _authenticationController.checkAuthentication();
 
-      final data = await _teamRepository.join(code);
-      if (list.any((item) => item.id == data.id)) {
+      final (data, alreadyJoined) = await _teamRepository.join(code);
+      if (alreadyJoined) {
         CustomDialog.showInfo("Info", "You are already in the team.");
         return data;
       }

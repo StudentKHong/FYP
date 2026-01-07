@@ -1,5 +1,15 @@
 import 'dart:math';
 
+// ==================================================
+// Program Name   : team_repository.dart
+// Purpose        : Repository for team persistence and queries
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 21 December 2025
+// ==================================================
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
@@ -108,7 +118,7 @@ class TeamRepository extends BaseRepository<Team> {
         .map((snapshot) => snapshot.docs.length);
   }
 
-  Future<Team> join(String code) async {
+  Future<(Team data, bool alreadyJoined)> join(String code) async {
     // Verify the team code.
     final querySnapshot = await super.collection
         .where('code', isEqualTo: code)
@@ -127,7 +137,7 @@ class TeamRepository extends BaseRepository<Team> {
         .limit(1)
         .get();
     if (memberQuerySnapshot.docs.isNotEmpty) {
-      return Team.fromFirestore(documentSnapshot);
+      return (Team.fromFirestore(documentSnapshot), true);
     }
 
     // Add user as a team member.
@@ -139,7 +149,7 @@ class TeamRepository extends BaseRepository<Team> {
     if (roleController.getUserRole() == UserType.worker) {
       documentReference.setOfflineSafe({"total": FieldValue.increment(1)});
     }
-    return Team.fromFirestore(documentSnapshot);
+    return (Team.fromFirestore(documentSnapshot), false);
   }
 
   Future<void> leave(String teamId) async {

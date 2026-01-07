@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : main.dart
+// Purpose        : App entry point and application bootstrap
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -27,6 +37,7 @@ import 'package:note_taking_app/UI/Navigation/named_routes.dart';
 import 'package:note_taking_app/UI/SharedComponents/app_theme.dart';
 import 'package:note_taking_app/UI/create_note.dart';
 import 'package:note_taking_app/UI/create_task.dart';
+import 'package:note_taking_app/UI/home.dart';
 import 'package:timezone/data/latest.dart';
 import 'package:note_taking_app/UI/login.dart';
 import 'package:toastification/toastification.dart';
@@ -105,10 +116,18 @@ void main() async {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: Get.find<ThemeController>().theme,
-        initialRoute: Routes.login,
         getPages: Routes.pages,
         localizationsDelegates: [FlutterQuillLocalizations.delegate],
-        home: LoginScreen(),
+        home: Obx(() {
+          final AuthenticationController authController =
+              Get.find<AuthenticationController>();
+          final user = authController.user.value;
+          if (user != null) {
+            return HomeScreen();
+          } else {
+            return LoginScreen();
+          }
+        }),
       ),
     ),
   );

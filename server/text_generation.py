@@ -1,3 +1,13 @@
+# ==================================================
+# Program Name   : text_generation.py
+# Purpose        : Text generation API for label generation
+# Developer      : Mr. Ng Kuok Hong 
+# Student ID     : TP069007
+# Course         : Bachelor of Software Engineering (Hons) 
+# Created Date   : 19 December 2025
+# Last Modified  : 24 December 2025
+# ==================================================
+
 import os
 import json
 from google import genai

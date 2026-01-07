@@ -67,6 +67,8 @@ dependencies:
   flutter_local_notifications: ^18.0.1
   google_fonts: ^6.3.3
   flutter_launcher_icons: ^0.14.4
+  tuple: ^2.0.2
+  names_launcher: ^0.0.2
 
 dev_dependencies:
   flutter_test:
@@ -123,3 +125,10 @@ flutter_launcher_icons:
   ios: true
   image_path: "assets/logo.png"
   adaptive_icon_background: "#00539C"
+names_launcher:
+  name: "NoteTask"
+  platforms:
+    android:
+      enable: true
+    ios:
+      enable: true

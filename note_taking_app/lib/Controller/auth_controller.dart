@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : auth_controller.dart
+// Purpose        : Handles authentication state and user session logic
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/class_controller.dart';
@@ -20,6 +30,8 @@ class AuthenticationController extends GetxController {
   late Rx<User?> firebaseUser;
   final Rx<AppUser?> user = Rx<AppUser?>(null);
   String? errorMessage;
+
+  var isInitialized = false.obs;
   var isLoading = false.obs;
 
   @override
@@ -27,12 +39,32 @@ class AuthenticationController extends GetxController {
     super.onInit();
     firebaseUser = Rx<User?>(FirebaseAuth.instance.currentUser);
     firebaseUser.bindStream(FirebaseAuth.instance.authStateChanges());
+
+    if (firebaseUser.value != null) {
+      _loadUserData();
+    }
+
     FirebaseAuth.instance.authStateChanges().listen((user) {
       firebaseUser.value = user;
       if (user != null) {
         _onLogin();
+      } else {
+        this.user.value = null;
       }
     });
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final userData = await _authRepository.getUserData();
+      if (userData != null) {
+        user.value = userData;
+      }
+      _onLogin();
+      isInitialized.value = true;
+    } catch (ex) {
+      errorMessage = "Unable to get user data.";
+    }
   }
 
   void _registeredController<T>(T Function() creator) {

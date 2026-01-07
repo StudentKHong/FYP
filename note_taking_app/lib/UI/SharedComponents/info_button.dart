@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : info_button.dart
+// Purpose        : Small info button used to show contextual help
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 19 December 2025
+// ==================================================
+
 import 'package:flutter/material.dart';
 import 'package:popover/popover.dart';
 
@@ -9,15 +19,17 @@ class Info {
 }
 
 class CustomInfoButton extends StatelessWidget {
-  final Color color;
+  final Color? color;
   final List<Info> infoDetails;
 
-  const CustomInfoButton({super.key, this.color = Colors.white, required this.infoDetails});
+  const CustomInfoButton({super.key, this.color, required this.infoDetails});
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      color: color,
+      padding: EdgeInsets.zero,
+      constraints: BoxConstraints(),
+      color: color ?? Theme.of(context).colorScheme.onPrimary,
       onPressed: () {
         showPopover(
           context: context,

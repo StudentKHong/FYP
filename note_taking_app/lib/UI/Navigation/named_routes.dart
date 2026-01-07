@@ -1,3 +1,13 @@
+// ==================================================
+// Program Name   : named_routes.dart
+// Purpose        : Centralised named route definitions for navigation
+// Developer      : Mr. Ng Kuok Hong 
+// Student ID     : TP069007
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 16 December 2025
+// Last Modified  : 26 December 2025
+// ==================================================
+
 import 'package:get/get.dart';
 import 'package:note_taking_app/Controller/class_controller.dart';
 import 'package:note_taking_app/Controller/label_controller.dart';
